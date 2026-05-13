@@ -203,7 +203,7 @@ const Pagamentos = () => {
                 <ShoppingCart className="info-icon" />
               </div>
               <h2 className="details-text">PAGAMENTO PENDENTE</h2>
-              <p className="details-subtext">Complete seu pagamento para acessar todas as funcionalidades do COEPS!</p>
+              <p className="details-subtext">Complete seu pagamento para acessar todas as funcionalidades do CIEPS.</p>
             </div>
           ) : (
             <div className="details-container">
@@ -211,7 +211,7 @@ const Pagamentos = () => {
                 <CheckCircle className="info-icon" />
               </div>
               <h2 className="details-text">PAGAMENTO CONFIRMADO</h2>
-              <p className="details-subtext">Seu pagamento foi confirmado! Você tem acesso completo ao COEPS.</p>
+              <p className="details-subtext">Seu pagamento foi confirmado! Você tem acesso completo ao CIEPS.</p>
             </div>
           )}
         </div>
@@ -609,7 +609,7 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
 
       } catch (error) {
         setLoading(false)
-        setMessageModalWarning("Erro ao buscar dados. Por favor recarregue a página e tente novamente. Caso o problema persista, entre em contato com a equipe COEPS.")
+        setMessageModalWarning("Erro ao buscar dados. Por favor recarregue a página e tente novamente. Caso o problema persista, entre em contato com a equipe CIEPS.")
         console.error('Erro ao buscar dados:', error);
       }
     };

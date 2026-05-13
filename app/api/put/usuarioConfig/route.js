@@ -6,6 +6,7 @@ import isValidCPF from '@/app/utils/authCpf';
 //
 //
 //
+/** @type {any} */
 export const PUT = withApiAuthRequired(async function (request) {
 
 

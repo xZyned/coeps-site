@@ -7,7 +7,7 @@ import { ArquivoUpload } from '@/lib/types/academicWorks/academicWorks.t';
 //
 //
 //
-export const PUT = withApiAuthRequired(async function (req) {
+export const PUT: any = withApiAuthRequired(async function (req) {
     try {
         const { db } = await connectToDatabase();
         const { user } = await getSession();

@@ -5,15 +5,15 @@ import "./globals.css";
 //
 //
 export const metadata = {
-  title: 'COEPS',
-  description: 'Bem-Vindo(a) ao site oficial do COEPS',
+  title: 'VIII CIEPS',
+  description: 'Site oficial do VIII CIEPS, a 1ª edição internacional do Congresso Internacional de Estudantes e Profissionais da Saúde.',
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-br">
       <head>
-        <title>COEPS</title>
+        <title>VIII CIEPS</title>
         <link rel="icon" href="/icon.png" />
       </head>
       <body className="">

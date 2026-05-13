@@ -6,6 +6,7 @@ import { DateTime } from "luxon"
 //
 //
 //
+/** @type {any} */
 export const PUT = withApiAuthRequired(async function (req) {
     const { db } = await connectToDatabase();
     const { user } = await getSession();

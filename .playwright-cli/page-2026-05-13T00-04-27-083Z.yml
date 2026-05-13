@@ -1,0 +1,137 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "VIII CIEPS" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "VIII CIEPS" [ref=e5]
+      - navigation "Navegacao principal" [ref=e6]:
+        - link "Sobre" [ref=e7] [cursor=pointer]:
+          - /url: /#sobre
+        - link "Programacao" [ref=e8] [cursor=pointer]:
+          - /url: /programacao
+        - link "Trabalhos" [ref=e9] [cursor=pointer]:
+          - /url: /trabalhos
+        - link "Informacoes" [ref=e10] [cursor=pointer]:
+          - /url: /anais
+        - link "Araguari" [ref=e11] [cursor=pointer]:
+          - /url: /#araguari
+        - link "Contato" [ref=e12] [cursor=pointer]:
+          - /url: /#contato
+      - link "Inscricoes" [ref=e13] [cursor=pointer]:
+        - /url: /inscricoes
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: A virada de 2026
+        - heading "VIII CIEPS" [level=1] [ref=e18]
+        - paragraph [ref=e19]: 1ª Edicao Internacional
+        - paragraph [ref=e21]: O maior congresso estudantil de saude da regiao entra em uma nova fase. Tradicao que inspira, ciencia que conecta e experiencias que transformam.
+        - generic [ref=e22]:
+          - link "Faca sua inscricao" [ref=e23] [cursor=pointer]:
+            - /url: /inscricoes
+          - link "Ver programacao" [ref=e24] [cursor=pointer]:
+            - /url: /programacao
+      - generic [ref=e25]:
+        - img "Ponte ferroviaria de Araguari" [ref=e27]
+        - generic [ref=e28]:
+          - strong [ref=e29]: Araguari, Minas Gerais.
+          - generic [ref=e30]: 12 a 15 de novembro de 2026.
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - text: Sobre o CIEPS
+        - heading "Um congresso que cresce sem perder o lugar de onde nasceu." [level=2] [ref=e33]
+        - paragraph [ref=e34]: O VIII CIEPS preserva a historia construida em Araguari e estreia sua 1ª Edicao Internacional com uma identidade mais forte, institucional e aberta ao futuro da saude.
+      - blockquote [ref=e35]:
+        - text: “O internacional muda tudo.”
+        - generic [ref=e36]: Minuta de direcao
+    - region "Indicadores do congresso" [ref=e37]:
+      - article [ref=e38]:
+        - strong [ref=e39]: 700+
+        - generic [ref=e40]: participantes presenciais
+      - article [ref=e41]:
+        - strong [ref=e42]: 40+
+        - generic [ref=e43]: minicursos praticos
+      - article [ref=e44]:
+        - strong [ref=e45]: "01"
+        - generic [ref=e46]: edicao internacional
+      - article [ref=e47]:
+        - strong [ref=e48]: "08"
+        - generic [ref=e49]: edicoes de historia
+      - article [ref=e50]:
+        - strong [ref=e51]: Tradicao
+        - generic [ref=e52]: que inspira. Ciencia que transforma.
+    - generic [ref=e53]:
+      - generic [ref=e54]:
+        - generic [ref=e55]: Programacao
+        - heading "Quatro dias para expandir conhecimento e conexoes." [level=2] [ref=e56]
+        - link "Ver programacao completa" [ref=e57] [cursor=pointer]:
+          - /url: /programacao
+      - generic [ref=e58]:
+        - article [ref=e59]:
+          - strong [ref=e60]: 12 nov
+          - heading "Abertura oficial" [level=3] [ref=e61]
+          - paragraph [ref=e62]: Palavra magna e simposios
+        - article [ref=e63]:
+          - strong [ref=e64]: 13 nov
+          - heading "Mesas redondas" [level=3] [ref=e65]
+          - paragraph [ref=e66]: Comunicacoes orais e workshops
+        - article [ref=e67]:
+          - strong [ref=e68]: 14 nov
+          - heading "Minicursos" [level=3] [ref=e69]
+          - paragraph [ref=e70]: Vivencias e sessoes tematicas
+        - article [ref=e71]:
+          - strong [ref=e72]: 15 nov
+          - heading "Encerramento" [level=3] [ref=e73]
+          - paragraph [ref=e74]: Apresentacoes finais e celebracao
+    - generic [ref=e75]:
+      - article [ref=e76]:
+        - generic [ref=e77]: Araguari
+        - heading "Uma cidade que sustenta a escala do congresso." [level=2] [ref=e78]
+        - paragraph [ref=e79]: Ferrovia, formacao e encontro entre territorio e futuro orientam a linguagem do CIEPS. A marca nao inventa grandeza. Ela organiza a grandeza que ja existe.
+      - img "Aplicacao da identidade visual do CIEPS em caderno" [ref=e81]
+    - generic [ref=e82]:
+      - img "Livro com identidade visual do CIEPS" [ref=e84]
+      - article [ref=e85]:
+        - generic [ref=e86]: Trabalhos cientificos
+        - heading "Compartilhe ciencia. Transforme realidades." [level=2] [ref=e87]
+        - paragraph [ref=e88]: Submeta seu trabalho e participe da producao cientifica que move o futuro da saude.
+        - link "Conhecer submissao" [ref=e89] [cursor=pointer]:
+          - /url: /trabalhos
+    - generic [ref=e90]:
+      - article [ref=e91]:
+        - generic [ref=e92]: Realizacao
+        - strong [ref=e93]: DADG
+      - article [ref=e94]:
+        - generic [ref=e95]: Apoio
+        - strong [ref=e96]: IMEPAC Araguari
+  - contentinfo [ref=e97]:
+    - generic [ref=e98]:
+      - generic [ref=e99]:
+        - img "Marca do VIII CIEPS" [ref=e100]
+        - paragraph [ref=e101]: VIII CIEPS. A 1ª Edicao Internacional do Congresso Internacional de Estudantes e Profissionais da Saude.
+      - generic [ref=e102]:
+        - heading "Contato" [level=2] [ref=e103]
+        - link "dadg.imepac@gmail.com" [ref=e104] [cursor=pointer]:
+          - /url: mailto:dadg.imepac@gmail.com
+        - link "+55 34 99120-9359" [ref=e105] [cursor=pointer]:
+          - /url: https://api.whatsapp.com/send?phone=5562983306426
+        - link "Instagram oficial" [ref=e106] [cursor=pointer]:
+          - /url: https://www.instagram.com/coeps.araguari/
+      - generic [ref=e107]:
+        - heading "Acessos rapidos" [level=2] [ref=e108]
+        - link "Programacao" [ref=e109] [cursor=pointer]:
+          - /url: /programacao
+        - link "Trabalhos cientificos" [ref=e110] [cursor=pointer]:
+          - /url: /trabalhos
+        - link "Anais" [ref=e111] [cursor=pointer]:
+          - /url: /anais
+        - link "Area do congressista" [ref=e112] [cursor=pointer]:
+          - /url: /painel
+      - generic [ref=e113]:
+        - heading "Institucional" [level=2] [ref=e114]
+        - paragraph [ref=e115]: "Realizacao: DADG"
+        - paragraph [ref=e116]: "Apoio: IMEPAC Araguari"
+        - paragraph [ref=e117]: Araguari, Minas Gerais, Brasil
+    - generic [ref=e118]:
+      - generic [ref=e119]: © 2026 VIII CIEPS.
+      - generic [ref=e120]: 1ª Edicao Internacional.

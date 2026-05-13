@@ -1,21 +1,26 @@
-'use client'
-import TituloBanner from "@/app/components/TituloBanner"
-//
-//
-export default function Anais() {
+import Link from 'next/link';
+import { ArrowRight, FileCheck2 } from 'lucide-react';
+import './style.css';
 
+export default function CertificadosPublicos() {
   return (
-    <>
-      <div className="min-h-screen bg-[#3E4095] p-5">
-        <div className="flex justify-center">
-          <div>
-            <h1 className="text-white text-[40px] font-extrabold">CERTIFICAÇÃO DIGITAL</h1>
-          </div>
-          <div>
-            <p></p>
-          </div>
+    <main className="certificados-public-page">
+      <section className="certificados-public-card cieps-surface">
+        <span className="cieps-kicker">Certificados</span>
+        <div className="certificados-public-icon">
+          <FileCheck2 size={28} />
         </div>
-      </div>
-    </>
-  )
+        <h1 className="cieps-display">A emissão não acontecerá pelo site.</h1>
+        <p>
+          O VIII CIEPS manterá nesta plataforma apenas as informações oficiais do
+          congresso. A orientação de acesso aos certificados será comunicada
+          separadamente pelos canais institucionais.
+        </p>
+        <Link href="/" className="cieps-button">
+          Voltar ao início
+          <ArrowRight size={18} />
+        </Link>
+      </section>
+    </main>
+  );
 }

@@ -6,6 +6,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 // 👇 **CORREÇÃO: Mudar o runtime para 'edge'**
 // 5 minutos
 
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     const { user } = await getSession(request);
     const userId = user.sub.replace("auth0|", "");

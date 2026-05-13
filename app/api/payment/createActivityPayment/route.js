@@ -8,6 +8,7 @@ import { DateTime } from "luxon"
 //
 //
 //
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         // Verificando se ele está logado
@@ -139,7 +140,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
         const valor = eventStatus[0].value
         const data_vencimento = formattedDate.replaceAll("/", "-")
 
-        const descricao = "Pagamento ATIVIDADES - COEPS."
+        const descricao = "Pagamento ATIVIDADES - CIEPS."
         const desconto = 0
 
         // Puxando id API

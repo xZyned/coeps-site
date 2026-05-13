@@ -7,7 +7,7 @@ export interface IPaymentConfig {
         "valorCadaParcela": number,
         "totalParcelas": number
     }[],
-    "nome": string, // exemplo => "Terceiro Lote - COEPS",
+    "nome": string, // exemplo => "Terceiro Lote - CIEPS",
     "valorAVista": number,
     "valorBoleto": number,
     "valorDebito": number,

@@ -1,10 +1,14 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import { withApiAuthRequired, getSession } from '@auth0/nextjs-auth0';
 import { ObjectId } from 'mongodb';
+import type { NextRequest } from 'next/server';
 
-export const GET = withApiAuthRequired(async function GET(request: Request, { params }: { params: { trabalhoId: string } }) {
+const protectedGet = withApiAuthRequired((async function GET(
+    request: Request,
+    { params }: { params: Promise<{ trabalhoId: string }> }
+) {
     try {
-        const { trabalhoId } = params;
+        const { trabalhoId } = await params;
         if (!ObjectId.isValid(trabalhoId)) {
             throw new Error('Invalid trabalhoId');
         }
@@ -24,4 +28,9 @@ export const GET = withApiAuthRequired(async function GET(request: Request, { pa
         return Response.json({ message: (error as Error).message }, { status: 500 });
     }
 
-})
+}) as any);
+
+export const GET = protectedGet as unknown as (
+    request: NextRequest,
+    context: { params: Promise<{ trabalhoId: string }> }
+) => Promise<Response> | Response;

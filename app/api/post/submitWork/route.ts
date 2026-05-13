@@ -75,7 +75,7 @@ async function validarArquivos(db, fileIds, userId) {
     return arquivos;
 }
 
-export const POST = withApiAuthRequired(async function POST(request) {
+export const POST: any = withApiAuthRequired(async function POST(request) {
     // @ts-expect-error: ts chato da porra kk
     const session = await getSession(request);
     if (!session || !session.user) {

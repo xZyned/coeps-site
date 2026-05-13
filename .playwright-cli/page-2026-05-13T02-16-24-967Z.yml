@@ -1,0 +1,96 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "VIII CIEPS" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "VIII CIEPS" [ref=e5]
+      - navigation "Navegacao principal" [ref=e6]:
+        - link "Sobre" [ref=e7] [cursor=pointer]:
+          - /url: /#sobre
+        - link "Programacao" [ref=e8] [cursor=pointer]:
+          - /url: /programacao
+        - link "Trabalhos" [ref=e9] [cursor=pointer]:
+          - /url: /trabalhos
+        - link "Informacoes" [ref=e10] [cursor=pointer]:
+          - /url: /anais
+        - link "Araguari" [ref=e11] [cursor=pointer]:
+          - /url: /#araguari
+        - link "Contato" [ref=e12] [cursor=pointer]:
+          - /url: /#contato
+      - link "Inscricoes" [ref=e13] [cursor=pointer]:
+        - /url: /inscricoes
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: Inscricoes
+        - heading "Garanta sua vaga no VIII CIEPS." [level=1] [ref=e18]
+        - paragraph [ref=e19]: A 1ª Edicao Internacional do congresso recebe estudantes, profissionais e pesquisadores para quatro dias de programacao, encontros e producao cientifica em Araguari.
+        - link "Cadastrar agora" [ref=e21] [cursor=pointer]:
+          - /url: /painel
+      - img "Crachá do CIEPS aplicado à nova identidade visual" [ref=e23]
+    - generic [ref=e24]:
+      - article [ref=e25]:
+        - text: Normas
+        - heading "O que sua inscricao garante" [level=2] [ref=e26]
+        - paragraph [ref=e27]: O pagamento da taxa de inscricao assegura o acesso às atividades previstas na programacao cientifica do evento. Pagamentos fora do vencimento podem acompanhar o lote vigente.
+      - article [ref=e28]:
+        - text: Pagamento
+        - heading "Formas disponiveis" [level=2] [ref=e29]
+        - paragraph [ref=e30]:
+          - text: Trabalhamos com
+          - strong [ref=e31]: PIX
+          - text: ","
+          - strong [ref=e32]: boleto bancario
+          - text: e
+          - strong [ref=e33]: cartao de credito
+          - text: ", para que cada congressista consiga concluir a inscricao com praticidade."
+      - article [ref=e34]:
+        - text: Fluxo
+        - heading "Como realizar sua inscricao" [level=2] [ref=e35]
+        - paragraph [ref=e36]: Crie sua conta, conclua o cadastro e siga para a tela de pagamento. Com a confirmacao automatica, sua vaga fica reservada e o painel do congressista e liberado.
+        - link "Ir para cadastro" [ref=e37] [cursor=pointer]:
+          - /url: /painel
+      - article [ref=e38]:
+        - text: Politicas
+        - heading "Acesso pessoal e protegido" [level=2] [ref=e39]
+        - paragraph [ref=e40]: Login e senha sao pessoais e intransferiveis. Ao se cadastrar, voce concorda em preservar suas credenciais e em utilizar o ambiente do congresso de forma segura.
+      - article [ref=e41]:
+        - text: Cancelamento
+        - heading "Reembolso e contato" [level=2] [ref=e42]
+        - paragraph [ref=e43]: O Art. 49 do Codigo de Defesa do Consumidor garante o prazo legal de 7 dias apos a compra para devolucao integral. Para iniciar esse processo, fale com a organizacao por e-mail ou WhatsApp.
+        - generic [ref=e44]:
+          - link "dadg.imepac@gmail.com" [ref=e45] [cursor=pointer]:
+            - /url: mailto:dadg.imepac@gmail.com
+          - link "+55 34 99120-9359" [ref=e46] [cursor=pointer]:
+            - /url: https://api.whatsapp.com/send?phone=5562983306426
+  - contentinfo [ref=e47]:
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - img "Marca do VIII CIEPS" [ref=e50]
+        - paragraph [ref=e51]: VIII CIEPS. A 1ª Edicao Internacional do Congresso Internacional de Estudantes e Profissionais da Saude.
+      - generic [ref=e52]:
+        - heading "Contato" [level=2] [ref=e53]
+        - link "dadg.imepac@gmail.com" [ref=e54] [cursor=pointer]:
+          - /url: mailto:dadg.imepac@gmail.com
+        - link "+55 34 99120-9359" [ref=e55] [cursor=pointer]:
+          - /url: https://api.whatsapp.com/send?phone=5562983306426
+        - link "Instagram oficial" [ref=e56] [cursor=pointer]:
+          - /url: https://www.instagram.com/coeps.araguari/
+      - generic [ref=e57]:
+        - heading "Acessos rapidos" [level=2] [ref=e58]
+        - link "Programacao" [ref=e59] [cursor=pointer]:
+          - /url: /programacao
+        - link "Trabalhos cientificos" [ref=e60] [cursor=pointer]:
+          - /url: /trabalhos
+        - link "Anais" [ref=e61] [cursor=pointer]:
+          - /url: /anais
+        - link "Area do congressista" [ref=e62] [cursor=pointer]:
+          - /url: /painel
+      - generic [ref=e63]:
+        - heading "Institucional" [level=2] [ref=e64]
+        - paragraph [ref=e65]: "Realizacao: DADG"
+        - paragraph [ref=e66]: "Apoio: IMEPAC Araguari"
+        - paragraph [ref=e67]: Araguari, Minas Gerais, Brasil
+    - generic [ref=e68]:
+      - generic [ref=e69]: © 2026 VIII CIEPS.
+      - generic [ref=e70]: 1ª Edicao Internacional.

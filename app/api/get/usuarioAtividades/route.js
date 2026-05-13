@@ -16,6 +16,7 @@ import { getSession } from '@auth0/nextjs-auth0';
 export const dynamic = 'force-dynamic'
 
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
     try {
 

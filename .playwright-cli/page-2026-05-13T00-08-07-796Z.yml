@@ -1,0 +1,76 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "VIII CIEPS" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "VIII CIEPS" [ref=e5]
+      - navigation "Navegacao principal" [ref=e6]:
+        - link "Sobre" [ref=e7] [cursor=pointer]:
+          - /url: /#sobre
+        - link "Programacao" [ref=e8] [cursor=pointer]:
+          - /url: /programacao
+        - link "Trabalhos" [ref=e9] [cursor=pointer]:
+          - /url: /trabalhos
+        - link "Informacoes" [ref=e10] [cursor=pointer]:
+          - /url: /anais
+        - link "Araguari" [ref=e11] [cursor=pointer]:
+          - /url: /#araguari
+        - link "Contato" [ref=e12] [cursor=pointer]:
+          - /url: /#contato
+      - link "Inscricoes" [ref=e13] [cursor=pointer]:
+        - /url: /inscricoes
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: Organizacao
+        - heading "A equipe do VIII CIEPS ganha uma apresentacao a altura." [level=1] [ref=e18]
+        - paragraph [ref=e19]: "Estamos preparando esta seção para publicar a composição oficial do congresso com a mesma clareza da nova identidade. O encontro já tem assinatura definida: VIII CIEPS, 1ª Edição Internacional."
+      - img "Aplicacao da identidade visual do CIEPS em camiseta e mobiliario" [ref=e20]
+    - generic [ref=e21]:
+      - article [ref=e22]:
+        - img [ref=e24]
+        - heading "Direcao" [level=2] [ref=e28]
+        - paragraph [ref=e29]: Responsavel pela conducao institucional e pelos marcos do congresso.
+      - article [ref=e30]:
+        - img [ref=e32]
+        - heading "Coordenacoes" [level=2] [ref=e35]
+        - paragraph [ref=e36]: Frentes que articulam experiencia, programacao e relacionamento.
+      - article [ref=e37]:
+        - img [ref=e39]
+        - heading "Equipe de apoio" [level=2] [ref=e43]
+        - paragraph [ref=e44]: Pessoas que sustentam a operacao e acolhem o publico durante o evento.
+    - generic [ref=e45]:
+      - generic [ref=e46]: Em breve
+      - heading "Nomes, frentes e responsabilidades serao publicados aqui." [level=2] [ref=e47]
+      - paragraph [ref=e48]: A pagina fica pronta desde ja para receber a equipe definitiva sem precisar de outra virada visual.
+  - contentinfo [ref=e49]:
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - img "Marca do VIII CIEPS" [ref=e52]
+        - paragraph [ref=e53]: VIII CIEPS. A 1ª Edicao Internacional do Congresso Internacional de Estudantes e Profissionais da Saude.
+      - generic [ref=e54]:
+        - heading "Contato" [level=2] [ref=e55]
+        - link "dadg.imepac@gmail.com" [ref=e56] [cursor=pointer]:
+          - /url: mailto:dadg.imepac@gmail.com
+        - link "+55 34 99120-9359" [ref=e57] [cursor=pointer]:
+          - /url: https://api.whatsapp.com/send?phone=5562983306426
+        - link "Instagram oficial" [ref=e58] [cursor=pointer]:
+          - /url: https://www.instagram.com/coeps.araguari/
+      - generic [ref=e59]:
+        - heading "Acessos rapidos" [level=2] [ref=e60]
+        - link "Programacao" [ref=e61] [cursor=pointer]:
+          - /url: /programacao
+        - link "Trabalhos cientificos" [ref=e62] [cursor=pointer]:
+          - /url: /trabalhos
+        - link "Anais" [ref=e63] [cursor=pointer]:
+          - /url: /anais
+        - link "Area do congressista" [ref=e64] [cursor=pointer]:
+          - /url: /painel
+      - generic [ref=e65]:
+        - heading "Institucional" [level=2] [ref=e66]
+        - paragraph [ref=e67]: "Realizacao: DADG"
+        - paragraph [ref=e68]: "Apoio: IMEPAC Araguari"
+        - paragraph [ref=e69]: Araguari, Minas Gerais, Brasil
+    - generic [ref=e70]:
+      - generic [ref=e71]: © 2026 VIII CIEPS.
+      - generic [ref=e72]: 1ª Edicao Internacional.

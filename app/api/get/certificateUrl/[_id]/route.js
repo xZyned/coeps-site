@@ -1,21 +1,22 @@
 import AWS from "aws-sdk"
 import { withApiAuthRequired } from "@auth0/nextjs-auth0";
 
-const r2 = new AWS.S3({
-    endpoint: process.env.r2_endpoint_url, 
-    accessKeyId: process.env.r2_access_key,
-    secretAccessKey: process.env.r2_secret_key,
-    region: "auto", 
-    signatureVersion:"v4"
-});
-
 export const dynamic = 'force-dynamic'
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
-    const idComponente = params["_id"];
+    const resolvedParams = await params;
+    const idComponente = resolvedParams["_id"];
     const bucketName = process.env.r2_bucket_name
 
     try {
+        const r2 = new AWS.S3({
+            endpoint: process.env.r2_endpoint_url,
+            accessKeyId: process.env.r2_access_key,
+            secretAccessKey: process.env.r2_secret_key,
+            region: "auto",
+            signatureVersion: "v4"
+        });
         const getObjectParams = {
             Bucket: bucketName,
             Key: `coeps2024/${idComponente}.pdf`,

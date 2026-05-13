@@ -3,6 +3,7 @@ import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
 import { connectToDatabase } from '@/lib/mongodb';
 import { del } from '@vercel/blob';
 
+/** @type {any} */
 export const DELETE = withApiAuthRequired(async function DELETE(request) {
     try {
         const { user } = await getSession();

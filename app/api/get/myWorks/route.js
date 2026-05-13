@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
 import { connectToDatabase } from '@/lib/mongodb';
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request) {
     const { user } = await getSession(request);
     const userId = user.sub.replace("auth0|", "");

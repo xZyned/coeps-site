@@ -8,6 +8,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 
 const MAX_CHUNK_SIZE = 10 * 1024 * 1024; // 10MB por chunk
 
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         const { user } = await getSession(request);

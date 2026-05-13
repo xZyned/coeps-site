@@ -17,6 +17,7 @@ export const GET = withApiAuthRequired( async function GET(request, response) {
     return Response.request({"ola":"mund"})
 });
   */
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, response) {
     try {
         //

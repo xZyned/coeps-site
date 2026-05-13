@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic'
 // e quando eu digo isso é que provavelmente tem outras partes do site que precisam de todas as atividades para evitar bugs fiz
 // uma rota bem parecida mas que só apenas retorna as atividades estão disponíveis, ou seja, showToUser = true.
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
   try {
     // Verificando se está logado

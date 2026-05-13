@@ -5,13 +5,15 @@ import { connectToDatabase } from '@/app/lib/mongodb';
 
 export const dynamic = 'force-dynamic'
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
   try {
     const { user } = await getSession();
-    const idComponente = params["_id"];
+    const resolvedParams = await params;
+    const idComponente = resolvedParams["_id"];
 
     if (!ObjectId.isValid(idComponente)) {
-      return new Response(JSON.stringify({ message: "Não foi possível encontrar o arquivo. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe COEPS." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ message: "Não foi possível encontrar o arquivo. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe CIEPS." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     const { db } = await connectToDatabase();
@@ -50,6 +52,6 @@ export const GET = withApiAuthRequired(async function GET(request, { params }) {
 
   } catch (error) {
     console.log(error.message);
-    return new Response(JSON.stringify({ message: error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe COEPS." }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ message: error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe CIEPS." }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 });

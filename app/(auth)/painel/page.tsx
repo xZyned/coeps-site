@@ -1,112 +1,124 @@
 'use client'
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { 
-  DollarSign,
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import {
+  Activity,
   BookOpen,
   Clock,
-  UserCheck,
-  Activity,
-  Sparkles,
+  CreditCard,
+  FileText,
   QrCode,
-  Award,
-  Upload // 👈 1. Importe o ícone de Upload
+  Sparkles,
+  Upload,
+  UserRound,
 } from 'lucide-react';
 import './style.css';
 
+const quickActions = [
+  { href: '/pagamentos', label: 'Meus pagamentos', icon: <CreditCard size={24} /> },
+  { href: '/painel/trabalhos/enviarTrabalho', label: 'Enviar trabalhos', icon: <Upload size={24} /> },
+  { href: '/painel/trabalhos', label: 'Consultar submissões', icon: <BookOpen size={24} /> },
+  { href: '/painel/minhaProgramacao', label: 'Minha programação', icon: <Clock size={24} /> },
+  { href: '/painel/minhasInformacoes', label: 'Minhas informações', icon: <UserRound size={24} /> },
+  { href: '/painel/comprovanteDeInscricao', label: 'Comprovante', icon: <Sparkles size={24} /> },
+  { href: '/painel/atividades', label: 'Atividades', icon: <Activity size={24} /> },
+];
+
 export default function Page() {
-  return (
-    <div className="painel-main">
-      {/* Partículas de fundo */}
-      <div className="painel-bg-particles">
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-        <div className="painel-particle"></div>
-      </div>
-
-      <div className="painel-container">
-        <PaginaAreaDoCliente />
-      </div>
-    </div>
-  )
-}
-
-function PaginaAreaDoCliente() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const res = await fetch("/api/get/usuariosInformacoes");
-        const data = await res.json();
+        const response = await fetch('/api/get/usuariosInformacoes');
+        const data = await response.json();
         setUserId(data?.data?._id || null);
-      } catch (e) {
+      } catch {
         setUserId(null);
       }
     };
+
     fetchUserId();
   }, []);
 
   return (
-    <>
-      <div className="painel-title">
-        <h1>Como podemos ajudar hoje?</h1>
-      </div>
-      
-      <div className="painel-grid">
-        <Link href="pagamentos" prefetch={false}>
-          <CardOpcoes texto="Meus Pagamentos" icon={<DollarSign size={48} />} />
-        </Link>
-
-        {/* 👇 2. BOTÃO ADICIONADO PARA A PÁGINA DE UPLOAD 👇 */}
-        <Link href="/painel/trabalhos/enviarTrabalho" prefetch={false}>
-          <CardOpcoes texto="Enviar Trabalhos" icon={<Upload size={48} />} />
-        </Link>
-        {/* --- Fim do botão adicionado --- */}
-
-        <Link href="painel/trabalhos" prefetch={false}>
-          <CardOpcoes texto="Consultar Submissões" icon={<BookOpen size={48} />} />
-        </Link>
-        <Link href="painel/minhaProgramacao" prefetch={false}>
-          <CardOpcoes texto="Minha Programação" icon={<Clock size={48} />} />
-        </Link>
-        <Link href="painel/minhasInformacoes" prefetch={false}>
-          <CardOpcoes texto="Minhas Informações" icon={<UserCheck size={48} />} />
-        </Link>
-        <Link href="painel/certificados" prefetch={false}>
-          <CardOpcoes texto="Meus Certificados" icon={<Award size={48} />} />
-        </Link>
-        <Link href="painel/comprovanteDeInscricao" prefetch={false}>
-          <CardOpcoes texto="Comprovante de Inscrição" icon={<Sparkles size={48} />} />
-        </Link>
-        <Link href="painel/atividades" prefetch={false}>
-          <CardOpcoes texto="Atividades" icon={<Activity size={48} />} />
-        </Link>
-        <div style={{ opacity: userId ? 1 : 0.5, pointerEvents: userId ? 'auto' : 'none' }}>
-          <Link href={`/qrCode/${userId ?? 'null'}`} prefetch={false}>
-            <CardOpcoes texto="Meu QR Code" icon={<QrCode size={48} />} />
-          </Link>
+    <main className="cieps-dashboard">
+      <section className="cieps-dashboard-hero">
+        <div>
+          <span className="cieps-kicker">Area do congressista</span>
+          <h1 className="cieps-display">Bem-vindo ao VIII CIEPS.</h1>
+          <p>
+            A 1ª Edicao Internacional organiza toda a sua jornada em um painel
+            mais direto: inscricao, submissao, agenda e acesso ao evento.
+          </p>
         </div>
-      </div>
-    </>
-  )
-}
+        <Image
+          src="/cieps/cieps-mark.png"
+          width={240}
+          height={160}
+          alt=""
+          aria-hidden="true"
+        />
+      </section>
 
-function CardOpcoes({ texto, icon, special = false }: { texto: string, icon: React.ReactNode, special?: boolean }) {
-  return (
-    <div className={`painel-card ${special ? 'painel-card-special' : ''}`}>
-      <div className="painel-card-icon">
-        {icon}
-      </div>
-      <h2 className="painel-card-text">{texto}</h2>
-    </div>
-  )
+      <section className="cieps-dashboard-grid">
+        <article className="cieps-dashboard-panel cieps-dashboard-panel-wide">
+          <div className="cieps-panel-heading">
+            <span className="cieps-kicker">Acoes principais</span>
+            <h2 className="cieps-display">O essencial da sua participacao.</h2>
+          </div>
+          <div className="cieps-dashboard-actions">
+            {quickActions.map((action) => (
+              <Link key={action.label} href={action.href} prefetch={false} className="cieps-dashboard-action">
+                <span>{action.icon}</span>
+                <strong>{action.label}</strong>
+              </Link>
+            ))}
+          </div>
+        </article>
+
+        <article className="cieps-dashboard-panel">
+          <div className="cieps-panel-heading">
+            <span className="cieps-kicker">Acesso ao evento</span>
+            <h2 className="cieps-display">Seu QR Code em um toque.</h2>
+          </div>
+          <p>
+            Use o codigo individual para facilitar seu check-in e consultar sua
+            credencial quando precisar.
+          </p>
+          <Link
+            href={`/qrCode/${userId ?? 'null'}`}
+            prefetch={false}
+            className={`cieps-button ${userId ? '' : 'is-disabled'}`}
+          >
+            <QrCode size={18} />
+            Ver QR Code
+          </Link>
+        </article>
+
+        <article className="cieps-dashboard-panel">
+          <div className="cieps-panel-heading">
+            <span className="cieps-kicker">Acompanhamento</span>
+            <h2 className="cieps-display">Submissoes e comprovante.</h2>
+          </div>
+          <p>
+            Acompanhe o status dos trabalhos enviados e consulte o comprovante
+            de inscricao sempre que precisar.
+          </p>
+          <div className="cieps-dashboard-inline-links">
+            <Link href="/painel/trabalhos" prefetch={false}>
+              <FileText size={16} />
+              Submissões
+            </Link>
+            <Link href="/painel/comprovanteDeInscricao" prefetch={false}>
+              <FileText size={16} />
+              Comprovante
+            </Link>
+          </div>
+        </article>
+      </section>
+    </main>
+  );
 }

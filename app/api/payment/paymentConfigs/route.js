@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic'
 // POR ENQUANTO ELE PUXA SÓ O 66bcfceedc9c7250e85b2ac6
 // SE PRECISAR DEPOIS ELE PUXA O RESTANTE BASEADO NA DATA E SEI LÁ O QUE MAIS.
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
   try {
     // Verificando se está logado

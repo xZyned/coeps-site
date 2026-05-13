@@ -9,6 +9,7 @@ import { connectToDatabase } from '@/app/lib/mongodb';
 //
 //
 //
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         const forwardedFor = request.headers.get('x-forwarded-for');
@@ -67,7 +68,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
 
         const valor = 180
         const data_vencimento = new Date().toISOString().split("T")[0] // retorna o dia de hoje.
-        const descricao = 'Primeiro lote para entrada no evento IV COEPS.'
+        const descricao = 'Primeiro lote para entrada no VIII CIEPS.'
         const desconto = 0
 
 
