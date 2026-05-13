@@ -61,11 +61,10 @@ export default function Home() {
         <div className="landing-hero-media">
           <div className="landing-hero-photo">
             <Image
-              src="/cieps/cieps-landing-banner.png"
+              src="/cieps/cieps-landing-panel.png"
+              unoptimized={true}
               alt="Arte panoramica do VIII CIEPS com a ponte ferroviaria de Araguari"
               fill
-              priority
-              sizes="(max-width: 980px) 100vw, 54vw"
             />
           </div>
         </div>
@@ -74,7 +73,7 @@ export default function Home() {
       <section className="landing-origin" id="sobre">
         <div className="landing-origin-art">
           <Image
-            src="/cieps/cieps-araguari-sketch.png"
+            src="/cieps/cieps-araguari-sketch-paper.png"
             width={720}
             height={300}
             alt="Ilustracao arquitetonica inspirada no patrimonio ferroviario de Araguari"
