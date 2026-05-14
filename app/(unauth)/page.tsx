@@ -19,7 +19,7 @@ const metrics = [
   {
     icon: Globe2,
     value: '01',
-    label: 'edicao internacional',
+    label: 'edição internacional',
   },
   {
     icon: BookOpen,
@@ -42,7 +42,7 @@ export default function Home() {
         <div className="landing-hero-copy">
           <span className="cieps-kicker">A virada de 2026</span>
           <h1 className="cieps-display">VIII CIEPS</h1>
-          <p className="landing-hero-edition">1ª Edicao Internacional</p>
+          <p className="landing-hero-edition">1ª Edição Internacional</p>
           <div className="cieps-lines" aria-hidden="true" />
           <p className="landing-hero-description">
             O maior congresso estudantil de saude da regiao entra em uma nova fase.
@@ -86,7 +86,7 @@ export default function Home() {
           </h2>
           <p>
             O VIII CIEPS preserva a historia construida em Araguari e estreia sua
-            1ª Edicao Internacional com uma identidade mais forte, institucional e
+            1ª Edição Internacional com uma identidade mais forte, institucional e
             aberta ao futuro da saude.
           </p>
         </div>

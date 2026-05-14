@@ -47,6 +47,7 @@ export default function HeaderPainel({ isPayed = true }: { isPayed: boolean }) {
 
         <div className="cieps-panel-actions">
           {!isPayed && <span className="cieps-panel-alert">Pagamento pendente</span>}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/api/auth/logout" className="cieps-panel-logout">
             <LogOut size={16} />
             <span>Sair</span>
@@ -77,6 +78,7 @@ export default function HeaderPainel({ isPayed = true }: { isPayed: boolean }) {
               <span>{item.name}</span>
             </Link>
           ))}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/api/auth/logout" onClick={() => setMenuAberto(false)}>
             <LogOut size={16} />
             <span>Sair</span>
