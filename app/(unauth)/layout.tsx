@@ -60,7 +60,7 @@ function Footer() {
         <div className="cieps-footer-column cieps-footer-meta">
           <h2>Institucional</h2>
           <p>Realizacao: DADG</p>
-          <p>Apoio: IMEPAC Araguari</p>
+          <p>Apoio: IMEPAC Araguari e Prefeitura de Araguari</p>
           <p>Araguari, Minas Gerais, Brasil</p>
         </div>
       </div>

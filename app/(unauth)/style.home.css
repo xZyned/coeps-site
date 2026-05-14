@@ -154,24 +154,29 @@
   align-items: center;
   border-bottom: 1px solid var(--cieps-line);
   display: grid;
-  gap: clamp(1.5rem, 3vw, 2.5rem);
-  grid-template-columns: minmax(220px, 0.68fr) minmax(0, 1fr) minmax(260px, 0.54fr);
-  margin: 0 auto;
-  max-width: 1380px;
-  min-height: 184px;
-  padding: 1.35rem 1.5rem;
+  gap: clamp(2rem, 4vw, 4rem);
+  grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.05fr) minmax(300px, 0.55fr);
+  margin: 0;
+  max-width: none;
+  min-height: 230px;
+  padding: 1.45rem clamp(2rem, 5vw, 6rem);
+  width: 100%;
 }
 
 .landing-origin-art {
   align-items: center;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .landing-origin-art img {
   display: block;
   height: auto;
-  width: min(100%, 360px);
+  width: min(100%, 520px);
+}
+
+.landing-origin-copy {
+  max-width: 680px;
 }
 
 .landing-origin-copy h2,
@@ -183,6 +188,11 @@
   margin: 0.35rem 0 0.55rem;
 }
 
+.landing-origin-copy h2 {
+  font-size: clamp(2.25rem, 3.15vw, 4rem);
+  max-width: 650px;
+}
+
 .landing-origin blockquote {
   border-left: 1px solid rgba(26, 26, 26, 0.22);
   color: var(--cieps-red);
@@ -191,7 +201,7 @@
   font-style: italic;
   line-height: 1.12;
   margin: 0;
-  padding: 0.6rem 0 0.6rem 1.6rem;
+  padding: 1rem 0 1rem 1.6rem;
 }
 
 .landing-origin small {
@@ -366,29 +376,107 @@
 }
 
 .landing-institutions {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.landing-institutions article {
+  align-items: center;
+  border-bottom: 1px solid var(--cieps-line);
   border-top: 1px solid var(--cieps-line);
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding-top: 1rem;
+  display: grid;
+  gap: clamp(1.5rem, 5vw, 5rem);
+  grid-template-columns: minmax(240px, 0.45fr) minmax(0, 1fr);
+  min-height: 92px;
+  padding-bottom: 0.9rem;
+  padding-top: 0.9rem;
 }
 
-.landing-institutions span {
+.landing-institution-group {
+  align-items: center;
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.75rem);
+  grid-template-columns: auto 1fr;
+  min-width: 0;
+}
+
+.landing-institution-label {
   color: var(--cieps-red);
-  font-size: 0.76rem;
-  font-weight: 700;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
-.landing-institutions strong {
-  font-family: var(--cieps-display);
-  font-size: clamp(1.8rem, 2.6vw, 2.8rem);
+.landing-logo-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(1.8rem, 4vw, 4.5rem);
+  min-width: 0;
+}
+
+.landing-logo-item {
+  align-items: center;
+  color: #343434;
+  display: inline-flex;
+  gap: 0.58rem;
+  min-height: 46px;
+}
+
+.landing-logo-item strong {
+  color: #202020;
+  display: block;
+  font-family: var(--cieps-body);
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.landing-logo-item small {
+  color: #3e3e3e;
+  display: block;
+  font-size: 0.48rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  margin-top: 0.18rem;
+  text-transform: uppercase;
+}
+
+.landing-logo-dadg img {
+  display: block;
+  height: 42px;
+  object-fit: contain;
+  width: auto;
+}
+
+.imepac-symbol {
+  display: block;
+  height: 48px;
+  object-fit: contain;
+  width: auto;
+}
+
+.imepac-wordmark strong {
+  font-size: 1.58rem;
+  letter-spacing: -0.01em;
+}
+
+.prefeitura-symbol {
+  display: block;
+  height: 52px;
+  object-fit: contain;
+  width: auto;
+}
+
+.prefeitura-wordmark strong {
+  font-size: 1.04rem;
+  letter-spacing: 0.015em;
+}
+
+.prefeitura-wordmark small {
+  font-size: 0.49rem;
+  margin-bottom: 0.14rem;
+  margin-top: 0;
 }
 
 .cieps-footer {
@@ -517,9 +605,16 @@
     width: 100%;
   }
 
-  .landing-metrics,
-  .landing-institutions {
+  .landing-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing-institutions {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-institution-group {
+    grid-template-columns: 5.8rem 1fr;
   }
 
   .landing-origin-art img {
@@ -580,6 +675,16 @@
   .landing-metrics,
   .landing-institutions {
     grid-template-columns: 1fr;
+  }
+
+  .landing-institution-group {
+    align-items: flex-start;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+  }
+
+  .landing-logo-row {
+    gap: 1.3rem;
   }
 
   .landing-metrics article {

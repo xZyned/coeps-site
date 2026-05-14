@@ -73,10 +73,10 @@ export default function Home() {
       <section className="landing-origin" id="sobre">
         <div className="landing-origin-art">
           <Image
-            src="/cieps/cieps-araguari-sketch-paper.png"
-            width={720}
-            height={300}
-            alt="Ilustracao arquitetonica inspirada no patrimonio ferroviario de Araguari"
+            src="/cieps/cieps-prefeitura-sketch-paper.png"
+            width={2574}
+            height={1632}
+            alt="Ilustracao arquitetonica da Prefeitura de Araguari"
           />
         </div>
         <div className="landing-origin-copy">
@@ -184,14 +184,55 @@ export default function Home() {
         </article>
       </section>
 
-      <section className="landing-institutions">
-        <article>
-          <span>Realizacao</span>
-          <strong>DADG</strong>
+      <section className="landing-institutions" aria-label="Realizacao e apoio institucional">
+        <article className="landing-institution-group">
+          <span className="landing-institution-label">Realizacao</span>
+          <div className="landing-logo-row">
+            <div className="landing-logo-item landing-logo-dadg" aria-label="DADG">
+              <Image
+                src="/cieps/logo-dadg-symbol-mono.png"
+                alt=""
+                width={70}
+                height={78}
+                aria-hidden="true"
+              />
+              <strong>DADG</strong>
+            </div>
+          </div>
         </article>
-        <article>
-          <span>Apoio</span>
-          <strong>IMEPAC Araguari</strong>
+
+        <article className="landing-institution-group landing-institution-support">
+          <span className="landing-institution-label">Apoio</span>
+          <div className="landing-logo-row landing-support-row">
+            <div className="landing-logo-item landing-logo-imepac" aria-label="IMEPAC Araguari">
+              <img
+                className="imepac-symbol"
+                src="/cieps/logo-imepac-symbol-clean.png"
+                alt=""
+                aria-hidden="true"
+              />
+              <span className="imepac-wordmark">
+                <strong>IMEPAC</strong>
+                <small>ARAGUARI</small>
+              </span>
+            </div>
+
+            <div
+              className="landing-logo-item landing-logo-prefeitura"
+              aria-label="Prefeitura de Araguari"
+            >
+              <img
+                className="prefeitura-symbol"
+                src="/cieps/logo-prefeitura-symbol-clean.png"
+                alt=""
+                aria-hidden="true"
+              />
+              <span className="prefeitura-wordmark">
+                <small>Prefeitura de</small>
+                <strong>Araguari/MG</strong>
+              </span>
+            </div>
+          </div>
         </article>
       </section>
     </main>
