@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 // 👇 CORREÇÃO APLICADA AQUI
 import { connectToDatabase } from '@/lib/mongodb';
 

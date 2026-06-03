@@ -1,4 +1,3 @@
-import { NextApiRequest, NextApiResponse } from 'next';
 import { Collection, ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb';
 //

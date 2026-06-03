@@ -1,100 +1,86 @@
 import { NextResponse } from 'next/server';
-import { withMiddlewareAuthRequired } from '@auth0/nextjs-auth0/edge';
+import { getAuth0Client, isAuth0Configured } from './app/lib/auth0';
 import { checkAndRefreshToken, checkAll, checkRoutes } from './app/utils/authUtils';
-//
-//
-//
-import { getSession } from '@auth0/nextjs-auth0/edge';
-//
-//
 
-export const middleware = withMiddlewareAuthRequired(async (req) => {
-  //const res = new NextResponse();
-  const res = NextResponse.next()
-  // Verificando Token.
-  var check = await checkAndRefreshToken(req, res); // apesar do nome, ele não dá refresh.
-  if (check) { return NextResponse.rewrite(check) }
+const protectedRoutes = [
+  '/suaInscricaoFoiConfirmada',
+  '/painel',
+  '/updateData',
+  '/pagamentos',
+];
 
+function isProtectedRoute(pathname) {
+  return protectedRoutes.some((route) => pathname.startsWith(route));
+}
 
-  // Verificando pagamento
+function normalizeRedirectUrl(req, target) {
+  const url = new URL(target);
+  const host = req.headers.get('host');
+  const protocol = req.headers.get('x-forwarded-proto');
 
-  check = await checkAll(req, res)
-  if (check) { return NextResponse.rewrite(check) }
+  if (host) {
+    url.host = host;
+  }
+
+  if (protocol) {
+    url.protocol = `${protocol}:`;
+  }
+
+  return url;
+}
+
+export async function middleware(req) {
+  if (!isAuth0Configured) {
+    if (req.nextUrl.pathname.startsWith('/auth') || isProtectedRoute(req.nextUrl.pathname)) {
+      return new NextResponse('AUTH0_DOMAIN is required to use Auth0 authentication routes.', {
+        status: 500,
+      });
+    }
+
+    return NextResponse.next();
+  }
+
+  const auth0 = getAuth0Client();
+  const authRes = await auth0.middleware(req);
+
+  if (req.nextUrl.pathname.startsWith('/auth')) {
+    return authRes;
+  }
+
+  if (!isProtectedRoute(req.nextUrl.pathname)) {
+    return authRes;
+  }
+
+  const session = await auth0.getSession(req);
+
+  if (!session) {
+    const loginUrl = new URL('/auth/login', req.url);
+    loginUrl.searchParams.set('returnTo', `${req.nextUrl.pathname}${req.nextUrl.search}`);
+    return NextResponse.redirect(normalizeRedirectUrl(req, loginUrl));
+  }
+
+  let check = await checkAndRefreshToken(req, authRes);
+  if (check) {
+    return NextResponse.redirect(normalizeRedirectUrl(req, check));
+  }
+
+  check = await checkAll(req, authRes);
+  if (check) {
+    return NextResponse.redirect(normalizeRedirectUrl(req, check));
+  }
 
   if (!req.nextUrl.pathname.startsWith('/pagamentos')) {
-    check = await checkRoutes(req, res)
-    if (check) { return NextResponse.rewrite(check) }
-
+    check = await checkRoutes(req, authRes);
+    if (check) {
+      return NextResponse.redirect(normalizeRedirectUrl(req, check));
+    }
   }
-  return res
-  //return NextResponse.next();
-});
-//
-//
 
-//
-//
-//
+  return authRes;
+}
+
 export const config = {
   matcher: [
-    '/suaInscricaoFoiConfirmada/:path*',
-    '/painel/:path*',
-    '/updateData/:path*',
-    '/pagamentos/:path*',
-  ]
-}
-/*
-      .Escrever na session.
-  const res = new NextResponse();
-  const session = await getSession(req, res)
-  console.log(session)
-
-
-  session.user.customProperty = 'valor personalizado';
-  console.log(session)
-
-
-
-  // converter session.acessTokenExpiresAt
-  new Date ( 1721265770 *1000 )
-*/
-/* Lógica para alterar o acess token segundo o gemini - nao testei
- 
-    import { NextResponse } from 'next/server';
-    import { getSession } from '@auth0/nextjs-auth0';
-
-    export const middleware = async (req: NextRequest) => {
-      const res = NextResponse.next();
-
-      // Get the session from the request
-      const session = await getSession(req, res);
-
-      // Check if the user is logged in
-      if (session?.isLoggedIn) {
-        // Check if the access token is about to expire
-        const accessTokenExpiresAt = session.accessTokenExpiresAt;
-        const now = Date.now();
-        if (accessTokenExpiresAt && now + 60000 > accessTokenExpiresAt) {
-          // Refresh the access token
-          const newAccessToken = await refreshAccessToken(session.refreshToken);
-
-          // Update the session with the new access token
-          session.accessToken = newAccessToken;
-          session.accessTokenExpiresAt = Date.now() + session.accessTokenExpiresIn * 1000;
-
-          // Update the authorization header in the response
-          res.cookies.set('auth', JSON.stringify(session));
-        }
-      }
-
-      // Continue with the middleware
-      return res;
-    };
-
-    // Replace this with your actual refresh token function
-    async function refreshAccessToken(refreshToken: string) {
-      // Implement your logic to refresh the access token using the refresh token
-      // and return the new access token
-}
-
-*/
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+  ],
+};

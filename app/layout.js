@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
 /*
 <UserProvider>
 </UserProvider>
-import { UserProvider } from '@auth0/nextjs-auth0/client';
+import { UserProvider } from '@/lib/auth0-client';
 
 */
 

@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb'
-import { getSession } from '@auth0/nextjs-auth0';
-import { withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession } from '@/lib/auth0-compat';
+import { withApiAuthRequired } from '@/lib/auth0-compat';
 import { DateTime } from "luxon"
 //
 //

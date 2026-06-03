@@ -1,7 +1,7 @@
 ///////
 'use client'
 import 'react-credit-cards-2/dist/es/styles-compiled.css';
-import { useUser } from "@auth0/nextjs-auth0/client"
+import { useUser } from "@/lib/auth0-client"
 import { useState, useEffect } from "react"
 import { useRouter } from 'next/navigation';
 import Link from "next/link";

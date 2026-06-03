@@ -1,5 +1,5 @@
 import { connectToDatabase } from '@/lib/mongodb';
-import { withApiAuthRequired, getSession } from '@auth0/nextjs-auth0';
+import { withApiAuthRequired, getSession } from '@/lib/auth0-compat';
 import { ObjectId } from 'mongodb';
 import type { NextRequest } from 'next/server';
 

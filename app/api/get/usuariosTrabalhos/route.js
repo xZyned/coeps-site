@@ -1,8 +1,8 @@
 import { connectToDatabase } from '../../../lib/mongodb'
 import { NextResponse } from 'next/server';
-import { getAccessToken, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getAccessToken, withApiAuthRequired } from '@/lib/auth0-compat';
 import { ObjectId } from 'bson';
-import { getSession } from '@auth0/nextjs-auth0';
+import { getSession } from '@/lib/auth0-compat';
 //
 //
 // Exemplo de return:

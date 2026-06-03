@@ -2,7 +2,7 @@
 // Verifica o token antes. Se estiver expirado, manda direto para o logout
 // Se retornar nada não há problema. Se retornar algo, vai ser um redirecionamento por erro.
 //
-import { getAccessToken, getSession } from "@auth0/nextjs-auth0/edge";
+import { getAccessToken, getSession } from "@/lib/auth0-compat";
 import { NextRequest, NextResponse } from "next/server";
 import { NextFetchEvent } from "next/server";
 import { IUser } from "../lib/types/user/user.t"
@@ -18,7 +18,7 @@ export async function checkAndRefreshToken(req, res) {
         return undefined
     } catch (error) {
         const urlLogOut = new URL(req.url)
-        urlLogOut.pathname = "/api/auth/logout"
+        urlLogOut.pathname = "/auth/logout"
         if (error.message === 'ERR_EXPIRED_ACCESS_TOKEN') {
             return urlLogOut            //return NextResponse.rewrite(urlLogOut);
         }
@@ -69,7 +69,7 @@ export async function checkAll(req: NextRequest, res) {
     } catch (error) {
         //console.log(error)
         const urlLogOut = new URL(req.url)
-        urlLogOut.pathname = "/api/auth/logout"
+        urlLogOut.pathname = "/auth/logout"
         // console.log(error)
         return urlLogOut
         //return NextResponse.rewrite(urlLogOut); // QUALQUER ERRO QUE DER VAI PRO LOGOUT

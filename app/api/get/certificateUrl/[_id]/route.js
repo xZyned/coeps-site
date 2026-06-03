@@ -1,5 +1,5 @@
 import AWS from "aws-sdk"
-import { withApiAuthRequired } from "@auth0/nextjs-auth0";
+import { withApiAuthRequired } from "@/lib/auth0-compat";
 
 export const dynamic = 'force-dynamic'
 

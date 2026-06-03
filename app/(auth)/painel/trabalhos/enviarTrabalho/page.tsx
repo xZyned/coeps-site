@@ -151,7 +151,7 @@ function SubmissionForm() {
         });
 
       } catch (error) {
-        //router.push('/api/auth/login?returnTo=/upload');
+        //router.push('/auth/login?returnTo=/upload');
       } finally {
         setIsLoadingStatus(false)
       }

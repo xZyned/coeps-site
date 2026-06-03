@@ -1,7 +1,7 @@
 
 // submit work
 import { NextResponse } from 'next/server';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'bson';
 import { IAcademicWorks, IAcademicWorksProps } from '@/lib/types/academicWorks/academicWorks.t';
@@ -76,7 +76,6 @@ async function validarArquivos(db, fileIds, userId) {
 }
 
 export const POST: any = withApiAuthRequired(async function POST(request) {
-    // @ts-expect-error: ts chato da porra kk
     const session = await getSession(request);
     if (!session || !session.user) {
         return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 401 });

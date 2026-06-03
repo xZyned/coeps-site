@@ -1,7 +1,7 @@
 import { ObjectId } from 'bson';
 import { connectToDatabase } from '@/app/lib/mongodb'
-import { getSession } from '@auth0/nextjs-auth0';
-import { withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession } from '@/lib/auth0-compat';
+import { withApiAuthRequired } from '@/lib/auth0-compat';
 import { IAcademicWorks } from '@/app/utils/academicWorks/academicWorks.t';
 import { ArquivoUpload } from '@/lib/types/academicWorks/academicWorks.t';
 //

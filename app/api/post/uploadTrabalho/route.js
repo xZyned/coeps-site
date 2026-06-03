@@ -1,7 +1,7 @@
 // pages/api/upload.js
 import { GridFSBucket } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 
 export const runtime = 'nodejs'; // Mude para 'nodejs' para evitar o Edge Runtime
 

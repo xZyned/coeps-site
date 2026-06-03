@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb'
-import { getAccessToken, getSession } from '@auth0/nextjs-auth0';
-import { withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getAccessToken, getSession } from '@/lib/auth0-compat';
+import { withApiAuthRequired } from '@/lib/auth0-compat';
 import isValidCPF from '@/app/utils/authCpf';
 //
 //

@@ -1,6 +1,6 @@
 // pages/api/download.js
 import { ObjectId, GridFSBucket } from 'mongodb';
-import { withApiAuthRequired, getSession } from '@auth0/nextjs-auth0';
+import { withApiAuthRequired, getSession } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/app/lib/mongodb';
 
 export const dynamic = 'force-dynamic'

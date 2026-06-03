@@ -1,5 +1,5 @@
 import { ObjectId, GridFSBucket } from 'mongodb';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { del } from '@vercel/blob';
 
