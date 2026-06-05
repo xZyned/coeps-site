@@ -2,7 +2,7 @@ import { connectToDatabase } from '../../../lib/mongodb'
 import { NextResponse } from 'next/server';
 import { getAccessToken } from '@/lib/auth0-compat';
 import { ObjectId } from 'mongodb';
-import { getSession,withApiAuthRequired } from '@/lib/auth0-compat';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 //
 //
 // Reforma algumas informações do informacoes_usuarios 
@@ -19,24 +19,24 @@ export const GET = withApiAuthRequired(async function GET(request, { params }) {
         const colecao = "usuarios"
 
         const { user } = await getSession();
-        const userId = user.sub.replace("auth0|",""); // Retirando o auth0|  
+        const userId = user.sub.replace("auth0|", ""); // Retirando o auth0|  
 
         const result = await db.collection(colecao).find(
-            {'_id':new ObjectId(userId)},
+            { '_id': new ObjectId(userId) },
             {
-                projection:{
-                    '_id':0,
-                    'informacoes_usuario':1,
+                projection: {
+                    '_id': 0,
+                    'informacoes_usuario': 1,
                 }
             }
         ).toArray()
-        return NextResponse.json({ ...result[0].informacoes_usuario },{status:200});
+        return NextResponse.json({ ...result[0].informacoes_usuario }, { status: 200 });
         // result[0].informacoes_usuario => IUser['informacoes_usuario']
 
     }
     catch (error) {
         // console.log(error)
-        return NextResponse.json({ "error": error },{status:500})
+        return NextResponse.json({ "error": error }, { status: 500 })
     }
 })
 /*             
