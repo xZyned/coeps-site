@@ -4,6 +4,10 @@ import { getUserId } from '@/lib/getUserId';
 import { connectToDatabase } from '@/lib/mongodb';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
 
+/**
+ * 
+ * @param request Cria uma sessão para o usuário ou retorna uma caso ele já possua.
+ */
 export async function POST(request: Request) {
     try {
         const userId = await getUserId(request);
@@ -11,9 +15,9 @@ export async function POST(request: Request) {
 
         // --- NOVO: Extraindo e validando os dados enviados pelo Frontend ---
         const body = await request.json();
-        const { nome, cpf, cep, rua, numero, bairro, complemento, loteAtualFrontEnd } = body;
+        const { nome, cpf, cep, rua, numero, bairro, complemento, loteAtualFrontEnd, telefone, email } = body;
         // Validação de segurança no Backend
-        if (!nome || !cpf || !cep || !rua || !numero || !bairro || !loteAtualFrontEnd) {
+        if (!nome || !cpf || !cep || !rua || !numero || !bairro || !loteAtualFrontEnd || !telefone || !email) {
             return NextResponse.json(
                 { error: 'Todos os campos obrigatórios devem ser preenchidos.' },
                 { status: 400 }
@@ -113,6 +117,8 @@ export async function POST(request: Request) {
                 name: nome,
                 cpf: cpf,
                 zipCode: cep,
+                phone: telefone,
+                email: email,
                 street: rua,
                 number: numero,
                 neighborhood: bairro,

@@ -15,6 +15,8 @@ export default interface PaymentTicketProps {
         number: number,
         neighborhood: string,
         complement: string,
+        phone: string,
+        email: string
     },
     paymentConfig: ILoteAutomatico;
     type: "ticket" | "course";

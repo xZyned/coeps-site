@@ -366,6 +366,8 @@ function PaymentSessionActive({
                     <PaymentForm
                         isModalOpen={paymentType === "CREDIT_CARD"}
                         onClose={() => setpaymentType("NONE")}
+                        dataPaymentConfig={dataPaymentConfig}
+                        hydratePage={hydratePage}
                     />
                 </div>
 
@@ -374,7 +376,7 @@ function PaymentSessionActive({
     );
 }
 //
-function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: IPaymentConfig; hydratePage: () => void }) {
+function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: any; hydratePage: () => void }) {
     const [step, setStep] = useState(0);
     const [textoModal, setTextoModal] = useState<string | false>(false);
     const [loadingModal, setLoadingModal] = useState<boolean>(false);
@@ -388,74 +390,21 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: IP
         rua: '',
         numero: '',
         complemento: '',
-        bairro: ''
+        bairro: '',
+        telefone: '',
+        email: '',
     });
 
     // Estado para guardar mensagens de erro
     const [erros, setErros] = useState<{ [key: string]: string }>({});
 
-    // Validação do Passo 1
-    const handleAvancarParaPasso2 = () => {
-        const novosErros: { [key: string]: string } = {};
-
-        if (!formData.nome.trim()) novosErros.nome = 'O nome completo é obrigatório.';
-        if (!formData.cpf.trim()) {
-            novosErros.cpf = 'O CPF é obrigatório.';
-        } else if (!validarCPF(formData.cpf)) {
-            novosErros.cpf = 'CPF inválido. Verifique os números.';
-        }
-
-        if (Object.keys(novosErros).length > 0) {
-            setErros(novosErros);
-        } else {
-            setErros({});
-            setStep(2);
-        }
+    // --- NOVA FUNÇÃO DE VALIDAÇÃO DE E-MAIL ---
+    const validarEmail = (email: string) => {
+        // Expressão regular simples para validar formato nome@dominio.com
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
     };
 
-    // Validação do Passo 2 (Finalizar)
-    const handleGerarTicket = async () => {
-        setLoadingModal(true);
-        const novosErros: { [key: string]: string } = {};
-        setLoadingModal(true);
-
-        if (!formData.cep.trim()) novosErros.cep = 'O CEP é obrigatório.';
-        if (!formData.rua.trim()) novosErros.rua = 'A rua é obrigatória.';
-        if (!formData.numero.trim()) novosErros.numero = 'O número é obrigatório.';
-        if (!formData.bairro.trim()) novosErros.bairro = 'O bairro é obrigatório.';
-
-        if (Object.keys(novosErros).length > 0) {
-            setErros(novosErros);
-        } else {
-            setErros({});
-            // Aqui você chama sua API POST para criar o ticket no banco
-            console.log('Ticket Gerado com sucesso!', formData);
-        }
-        // 
-        const paymentPostResponse = await fetch(`/api/v1/payment/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ...formData, loteAtualFrontEnd: loteAtual }),
-        });
-        if (!paymentPostResponse.ok) {
-            // 
-            const errorData: {
-                success: false,
-                message: "O lote que você selecionou não está mais vigente. Por favor, atualize a página para ver o lote atual.",
-                loteVigente: ILoteAutomatico,
-            } = await paymentPostResponse.json();
-            setLoadingModal(false);
-            hydratePage();
-            setTextoModal(errorData.message);
-            return;
-        }
-        // se Deu tudo certo, recarregar a página: 
-        // Quando recarrega, ele vai ver que há uma sessão ativa e vai mandar o usuário para essa sessão. De qualquer forma,
-        // Daria para fazer sem recarregar, entretanto, devido ao tempo escasso, vou fazer assim mesmo!
-        window.location.reload();
-    };
     const validarCPF = (cpf: string) => {
         // Rejeita imediatamente se houver pontuação, letras ou se não tiver exatamente 11 números
         if (!/^\d{11}$/.test(cpf)) return false;
@@ -473,10 +422,80 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: IP
         return true;
     };
 
+    // Validação do Passo 1
+    const handleAvancarParaPasso2 = () => {
+        const novosErros: { [key: string]: string } = {};
+
+        if (!formData.nome.trim()) novosErros.nome = 'O nome completo é obrigatório.';
+
+        if (!formData.cpf.trim()) {
+            novosErros.cpf = 'O CPF é obrigatório.';
+        } else if (!validarCPF(formData.cpf)) {
+            novosErros.cpf = 'CPF inválido. Verifique os números.';
+        }
+
+        // Validação de Telefone (adicionado para não deixar passar em branco)
+        if (!formData.telefone.trim()) novosErros.telefone = 'O telefone é obrigatório.';
+
+        // --- NOVA VALIDAÇÃO DE E-MAIL AQUI ---
+        if (!formData.email.trim()) {
+            novosErros.email = 'O e-mail é obrigatório.';
+        } else if (!validarEmail(formData.email)) {
+            novosErros.email = 'E-mail inválido. Verifique o formato.';
+        }
+
+        if (Object.keys(novosErros).length > 0) {
+            setErros(novosErros);
+        } else {
+            setErros({});
+            setStep(2);
+        }
+    };
+
+    // Validação do Passo 2 (Finalizar)
+    const handleGerarTicket = async () => {
+        setLoadingModal(true);
+        const novosErros: { [key: string]: string } = {};
+
+        if (!formData.cep.trim()) novosErros.cep = 'O CEP é obrigatório.';
+        if (!formData.rua.trim()) novosErros.rua = 'A rua é obrigatória.';
+        if (!formData.numero.trim()) novosErros.numero = 'O número é obrigatório.';
+        if (!formData.bairro.trim()) novosErros.bairro = 'O bairro é obrigatório.';
+
+        if (Object.keys(novosErros).length > 0) {
+            setErros(novosErros);
+            setLoadingModal(false); // Adicionado para tirar o loading se der erro de validação
+            return;
+        } else {
+            setErros({});
+            console.log('Ticket Gerado com sucesso!', formData);
+        }
+
+        const paymentPostResponse = await fetch(`/api/v1/payment/session/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ...formData, loteAtualFrontEnd: loteAtual }),
+        });
+
+        if (!paymentPostResponse.ok) {
+            const errorData: any = await paymentPostResponse.json();
+            setLoadingModal(false);
+            hydratePage();
+            setTextoModal(errorData.message || "Ocorreu um erro ao processar seu pagamento.");
+            return;
+        }
+
+        // se Deu tudo certo, recarregar a página
+        window.location.reload();
+    };
+
     return (
         <div className='pagamentos-main'>
             {loadingModal && <LoadingModal />}
             {textoModal && <ModalError texto={textoModal} handleIsModalError={(value) => setTextoModal(value)} />}
+
             {/* ETAPA 0: INFORMAÇÕES E VALORES INICIAIS */}
             {step === 0 && (
                 <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
@@ -493,12 +512,12 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: IP
                             </div>
                             <div className='bg-slate-50 p-5 rounded-lg border border-slate-100 flex flex-col gap-3'>
                                 {
-                                    dataPaymentConfig.pagamentosAceitos.map((tipoPagamento, index) => {
+                                    dataPaymentConfig.pagamentosAceitos.map((tipoPagamento: string, index: number) => {
                                         return (
                                             <div key={index} className='text-slate-800'>
                                                 {tipoPagamento === "PIX" && <p className='font-semibold text-emerald-600'>- PIX: R$ {loteAtual?.precos.valorPix}</p>}
                                                 {tipoPagamento === "BOLETO" && <p className='font-medium'>- BOLETO: R$ {loteAtual?.precos.valorBoleto}</p>}
-                                                {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-indigo-600'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela, index) => <><span key={index} className='text-slate-600 font-normal ml-4 block mt-1'>► {index + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span></>)}</p>}
+                                                {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-indigo-600'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela: any, idx: number) => <span key={idx} className='text-slate-600 font-normal ml-4 block mt-1'>► {idx + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span>)}</p>}
                                                 {tipoPagamento === "DEBIT_CARD" && <p className='font-medium'>- DÉBITO: R$ {loteAtual?.precos.valorDebito}</p>}
                                             </div>
                                         )
@@ -531,12 +550,12 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: IP
                         <div className='bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col gap-2 mb-4 text-sm'>
                             <p className='font-bold text-slate-700 mb-1'>Valores do Lote Atual:</p>
                             {
-                                dataPaymentConfig.pagamentosAceitos.map((tipoPagamento, index) => {
+                                dataPaymentConfig.pagamentosAceitos.map((tipoPagamento: string, index: number) => {
                                     return (
                                         <div key={index} className='text-slate-800'>
                                             {tipoPagamento === "PIX" && <p className='font-semibold text-emerald-600'>- PIX: R$ {loteAtual?.precos.valorPix}</p>}
                                             {tipoPagamento === "BOLETO" && <p className='font-medium'>- BOLETO: R$ {loteAtual?.precos.valorBoleto}</p>}
-                                            {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-indigo-600'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela, index) => <><span key={index} className='text-slate-600 font-normal ml-4 block mt-1'>► {index + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span></>)}</p>}
+                                            {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-indigo-600'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela: any, idx: number) => <span key={idx} className='text-slate-600 font-normal ml-4 block mt-1'>► {idx + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span>)}</p>}
                                             {tipoPagamento === "DEBIT_CARD" && <p className='font-medium'>- DÉBITO: R$ {loteAtual?.precos.valorDebito}</p>}
                                         </div>
                                     )
@@ -577,6 +596,27 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: IP
                                     className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.cpf ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
                                 />
                                 {erros.cpf && <span className="text-red-500 text-xs mt-1 block">{erros.cpf}</span>}
+                            </div>
+                            <div>
+                                <label className='block text-sm font-medium text-slate-700 mb-1'>Telefone</label>
+                                <input
+                                    type="text"
+                                    value={formData.telefone}
+                                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.telefone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                />
+                                {erros.telefone && <span className="text-red-500 text-xs mt-1 block">{erros.telefone}</span>}
+                            </div>
+                            <div>
+                                <label className='block text-sm font-medium text-slate-700 mb-1'>e-mail</label>
+                                <input
+                                    type="text"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    placeholder="exemplo@email.com"
+                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                />
+                                {erros.email && <span className="text-red-500 text-xs mt-1 block">{erros.email}</span>}
                             </div>
 
                             <div className='flex justify-between mt-4'>
@@ -651,7 +691,6 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: IP
                                 />
                                 {erros.bairro && <span className="text-red-500 text-xs mt-1 block">{erros.bairro}</span>}
                             </div>
-
                             <div className='flex justify-between mt-4'>
                                 <button onClick={() => setStep(1)} className='text-slate-500 hover:text-slate-700 font-medium px-4 py-2'>
                                     Voltar
@@ -733,19 +772,18 @@ const ModalError = ({ texto, handleIsModalError }: { texto: string; handleIsModa
 };
 
 // Componente de formulário de pagamento (mantido do código original)
-const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: () => void }) => {
+const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: { isModalOpen: boolean; onClose: () => void, dataPaymentConfig: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps }; hydratePage: () => void }) => {
     const [step, setStep] = useState(1); // 1 para informações pessoais, 2 para informações do cartão
-    const [data, setData] = useState<IPaymentConfig | undefined>(undefined)
     const [messageModalWarning2, setMessageModalWarning2] = useState("")
     const [messageModalWarning, setMessageModalWarning] = useState("")
     const [textoPagamentoEscolhido, setTextoPagametoEscolhido] = useState("")
     const [personalInfo, setPersonalInfo] = useState({
-        name: '',
-        email: '',
-        cpfCnpj: '',
-        postalCode: '',
-        addressNumber: '',
-        phone: '',
+        name: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.name || '',
+        email: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.email || '',
+        cpfCnpj: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.cpf || '',
+        postalCode: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.zipCode || '',
+        addressNumber: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.number || '',
+        phone: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.phone || '',
     });
     const [cardInfo, setCardInfo] = useState<{
         number: string,
@@ -761,7 +799,7 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
         focus: '',
     });
     const [isConfirmationOpen, setConfirmationOpen] = useState(false);
-    const [isLoading, setLoading] = useState(true);
+    const [isLoading, setLoading] = useState(false);
     const [idPagamento, setIdPagamento] = useState(undefined)
     const [dataModalProps, setDataModalProps] = useState<ModalProps>({
         isOpen: false,
@@ -772,7 +810,7 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
     })
     //
 
-    useEffect(() => {
+    useEffect(() => {/*
         const fetchData = async () => {
             try {
                 const response = await fetch('/api/payment/paymentConfigs', {
@@ -800,7 +838,7 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
             }
         };
         fetchData();
-    }, []);
+    */}, []);
 
     const handleIdPagamento = (id) => {
         setIdPagamento(id)
@@ -863,11 +901,12 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
                         personalInfo,
                         cardInfo,
                         idPagamento,
-                        _id: data._id
+                        _id: dataPaymentConfig._id,
+                        sessionId: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva._id,
                     };
 
                     // Envie o POST request com o JSON
-                    const response = await fetch('/api/payment/createpaymentType', {
+                    const response = await fetch('/api/v1/payment/session/creditCard/', { //
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -877,6 +916,9 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
                     const result: { message: string } = await response.json();
                     if (!response.ok) {
                         //console.log(result)
+                        if (response.status === 409) {
+                            setMessageModalWarning(result.message)
+                        }
                         throw new Error(result.message || "Aconteceu algum erro desconhecido");
                     }
 
@@ -943,19 +985,14 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
         <>
             <TermModal {...dataModalProps} />
             <ResponseModal message={messageModalWarning} />
-            <ResponseModal2 message={messageModalWarning2} handleModalClose={() => { setMessageModalWarning2("") }} />
+            <ResponseModal2 message={messageModalWarning2} handleModalClose={() => {
+                setMessageModalWarning2("")
+                window.location.reload()
+            }} />
             <div className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50'>
                 <div className='relative bg-white p-6 rounded-lg shadow-lg w-full max-w-lg overflow-auto h-[90%]'>
                     <button
                         onClick={() => {
-                            setPersonalInfo({
-                                name: '',
-                                email: '',
-                                cpfCnpj: '',
-                                postalCode: '',
-                                addressNumber: '',
-                                phone: '',
-                            })
                             setCardInfo({
                                 number: '',
                                 expiry: '',
@@ -1046,7 +1083,7 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
                     {step === 2 && (
                         <div className=''>
                             <div className='text-center font-bold text-[#3e4095] text-[20px] mb-5'>
-                                <h1>{data?.nome || "PAGAMENTOS"}</h1>
+                                <h1>{dataPaymentConfig.nome || "PAGAMENTOS"}</h1>
                             </div>
                             <Cards
                                 locale={{ valid: 'Validade', }}
@@ -1104,14 +1141,14 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
                                             </div>
                                             <div className='font-bold pb-8 text-[#3e4095]'>
                                                 <p>
-                                                    Escolha uma das {data?.parcelamentos?.length} opções de parcelamento disponíveis:
+                                                    Escolha uma das {dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.paymentConfig.precos.parcelamentos.length} opções de parcelamento disponíveis:
                                                 </p>
                                             </div>
                                         </div>
                                         <div className='space-y-3'>
                                             {
 
-                                                data?.parcelamentos?.map((value) => {
+                                                dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.paymentConfig.precos.parcelamentos?.map((value) => {
                                                     return (
                                                         <div key={value.codigo} className={`p-5 cursor-pointer ${value.codigo == idPagamento ? 'bg-red-600' : "bg-yellow-100"}`} onClick={() => {
                                                             handleIdPagamento(value.codigo)

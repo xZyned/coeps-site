@@ -29,7 +29,7 @@ function normalizeRedirectUrl(req, target) {
   return url;
 }
 
-export async function middleware(req) {
+export async function proxy(req) {
   if (!isAuth0Configured) {
     if (req.nextUrl.pathname.startsWith('/auth') || isProtectedRoute(req.nextUrl.pathname)) {
       return new NextResponse('AUTH0_DOMAIN is required to use Auth0 authentication routes.', {
