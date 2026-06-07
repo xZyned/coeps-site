@@ -6,26 +6,6 @@ import { getAccessToken, getSession } from "@/lib/auth0-compat";
 import { NextRequest, NextResponse } from "next/server";
 import { NextFetchEvent } from "next/server";
 import { IUser } from "../lib/types/user/user.t"
-
-//
-export async function checkAndRefreshToken(req, res) {
-    try {
-        const { accessToken } = await getAccessToken(req, res);
-
-        // Simular erro de token expirado para fins de teste
-        // throw new Error('ERR_EXPIRED_ACCESS_TOKEN');
-
-        return undefined
-    } catch (error) {
-        const urlLogOut = new URL(req.url)
-        urlLogOut.pathname = "/auth/logout"
-        if (error.message === 'ERR_EXPIRED_ACCESS_TOKEN') {
-            return urlLogOut            //return NextResponse.rewrite(urlLogOut);
-        }
-        return urlLogOut
-        //return NextResponse.rewrite(urlLogOut); // QUALQUER ERRO QUE DER VAI PRO LOGOUT
-    }
-}
 //
 //
 export async function checkAll(req: NextRequest, res) {
