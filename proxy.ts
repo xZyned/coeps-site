@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAuth0Configured } from './app/lib/auth0';
-import { auth0 } from '@/lib/auth0/v1/auth0';
+import { auth0 } from './app/lib/auth0';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getUserId } from '@/lib/getUserId';
 import { ObjectId } from 'bson';
@@ -60,7 +60,7 @@ export async function proxy(req) {
   const user: IUser | null = await db.collection("usuarios").findOne({ _id: new ObjectId(userId) });
 
   // 6. Verificação de Perfil Incompleto
-  if (!user || !user.isPos_registration) {
+  if (!user || user.isPos_registration) {
     if (path === "/painel/dadosIniciais") { // Usar === evita falsos positivos
       return NextResponse.next();
     }

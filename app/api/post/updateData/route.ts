@@ -2,7 +2,6 @@ import { connectToDatabase } from '../../../lib/mongodb'
 import { ObjectId } from 'bson';
 import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { IUser } from '@/lib/types/user/user.t';
-
 //
 //
 // Aqui ele sempre pega os mesmos parametros para realizar o update.
@@ -22,6 +21,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
         const ASAAS_API_URL = process.env.ASAAS_API_URL + "/customers"
 
         const data = await request.json()
+        console.log(data)
 
         const { db } = await connectToDatabase();
 
@@ -62,6 +62,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
             //
             //
             const userInsert: IUser = {
+                //@ts-expect-error: Apenas um problema de tipificação.
                 _id: b,
                 id_api: id_api,
                 isPos_registration: true,
@@ -70,10 +71,18 @@ export const POST = withApiAuthRequired(async function POST(request) {
                     numero_telefone: data.numero_telefone,
                     nome: data.nome,
                     email: data.email,
-                    data_criacao: '',
-                    titulo_honorario: ''
+                    data_criacao: new Date(),
+                    titulo_honorario: '',
+                    país: data.pais,
+                    cidade: data.cidade,
+                    data_nascimento: data.data_nascimento,
+                    onde_conheceu: data.onde_conheceu,
+                    curso: data.curso,
+                    ano_conclusao: Number(data.ano_conclusao),
+                    semestre_conclusao: Number(data.semestre_conclusao)
                 },
                 pagamento: {
+                    //@ts-expect-error: Apenas um problema de tipificação.
                     _id: b,
                     situacao: 0,
                     lista_pagamentos: [],
@@ -106,30 +115,37 @@ export const POST = withApiAuthRequired(async function POST(request) {
             })
         }
         //
-        const response = await fetch(ASAAS_API_URL+`${userDb.id_api}`, options)
+        const response = await fetch(`${ASAAS_API_URL}/${userDb.id_api}`, options)
         if (!response.ok) {
             const errorText = await response.json()
             throw ({ "message": errorText.errors[0].description })
         }
         var responseJson = await response.json()
-        await db.collection('usuarios').findOneAndUpdate({ "_id": userId }, {
+        const putUser: IUser["informacoes_usuario"] = { // informações que vão ser atualizadas sobre o usuário.
+            cpf: data.cpf,
+            numero_telefone: data.numero_telefone,
+            nome: data.nome,
+            email: data.email,
+            data_criacao: userDb.informacoes_usuario.data_criacao,
+            titulo_honorario: '',
+            país: data.pais,
+            cidade: data.cidade,
+            data_nascimento: data.data_nascimento,
+            onde_conheceu: data.onde_conheceu,
+            curso: data.curso,
+            ano_conclusao: Number(data.ano_conclusao),
+            semestre_conclusao: Number(data.semestre_conclusao)
+        }
+        await db.collection('usuarios').findOneAndUpdate({ "_id": new ObjectId(userId) }, {
             "$set": {
                 'isPos_registration': true,
-                'informacoes_usuario.nome': data.nome,
-                'informacoes_usuario.cpf': data.cpf,
-                'informacoes_usuario.numero_telefone': data.numero_telefone,
+                'informacoes_usuario': putUser
             }
         })
         return Response.json({ "sucesso": "Ocorreu Tudo Certo!" })
-        /**
-         'isPos_registration':1, // Sempre colocar 1 para ele nao voltar ai de novo
-            'nome': data.nome,
-            'numero_telefone': data.numero_telefone,
-            'cpf': data.cpf
-            
-            */
     }
     catch (error) {
+        console.log(error.message)
         return Response.json({ "message": error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe CIEPS." }, { status: 500 })
     }
 

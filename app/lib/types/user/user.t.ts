@@ -9,7 +9,7 @@ export interface IUser {
         "numero_telefone": string,
         "nome": string,
         "email": string,
-        "data_criacao": string, // ele retorna do db como string, mas é guardado como data => "2024-08-13T20:57:40.256Z",
+        "data_criacao": string | Date, // ele retorna do db como string, mas é guardado como data => "2024-08-13T20:57:40.256Z",
         "titulo_honorario": string,
         "país": string,
         "cidade": string,
