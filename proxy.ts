@@ -60,7 +60,7 @@ export async function proxy(req) {
   const user: IUser | null = await db.collection("usuarios").findOne({ _id: new ObjectId(userId) });
 
   // 6. Verificação de Perfil Incompleto
-  if (!user || user.isPos_registration) {
+  if (!user || !user.isPos_registration) {
     if (path === "/painel/dadosIniciais") { // Usar === evita falsos positivos
       return NextResponse.next();
     }
