@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
 import { isAuth0Configured } from './app/lib/auth0';
-import { checkAll, checkRoutes } from './app/utils/authUtils';
-
-
 import { auth0 } from '@/lib/auth0/v1/auth0';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getUserId } from '@/lib/getUserId';
@@ -15,27 +12,9 @@ const protectedRoutes = [
   '/updateData',
   '/pagamentos',
 ];
-
 function isProtectedRoute(pathname) {
   return protectedRoutes.some((route) => pathname.startsWith(route));
 }
-
-function normalizeRedirectUrl(req, target) {
-  const url = new URL(target);
-  const host = req.headers.get('host');
-  const protocol = req.headers.get('x-forwarded-proto');
-
-  if (host) {
-    url.host = host;
-  }
-
-  if (protocol) {
-    url.protocol = `${protocol}:`;
-  }
-
-  return url;
-}
-
 export async function proxy(req) {
   const path = req.nextUrl.pathname;
 
@@ -71,14 +50,14 @@ export async function proxy(req) {
 
   // 4. Se não tem sessão em rota protegida, força o login
   if (!session) {
-    return auth0.startInteractiveLogin({ returnTo: req.nextUrl.toString() });
+    return auth0.startInteractiveLogin({ returnTo: new URL("/painel", req.nextUrl.origin).toString() });
   }
 
   // 5. Usuário está logado. Vamos buscar os dados.
   // ATENÇÃO: Lembre-se do aviso sobre o MongoDB no Edge Runtime!
   const { db } = await connectToDatabase();
   const userId = await getUserId(req);
-  const user = await db.collection("usuarios").findOne({ _id: new ObjectId(userId) });
+  const user: IUser | null = await db.collection("usuarios").findOne({ _id: new ObjectId(userId) });
 
   // 6. Verificação de Perfil Incompleto
   if (!user || !user.isPos_registration) {

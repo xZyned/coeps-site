@@ -1,12 +1,15 @@
 'use client'
 import { useUser } from "@/lib/auth0-client"
 import { useRouter } from 'next/navigation';
-// import Image from "next/image"; // Omitido pois não estava em uso, mas pode manter se for usar depois
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import TelaLoading from "@/app/components/TelaLoading";
 
+const PAISES = [
+    "Afeganistão", "África do Sul", "Albânia", "Alemanha", "Andorra", "Angola", "Antígua e Barbuda", "Arábia Saudita", "Argélia", "Argentina", "Armênia", "Austrália", "Áustria", "Azerbaijão", "Bahamas", "Bangladesh", "Barbados", "Bahrein", "Bélgica", "Belize", "Benim", "Bielorrússia", "Bolívia", "Bósnia e Herzegovina", "Botsuana", "Brasil", "Brunei", "Bulgária", "Burquina Faso", "Burundi", "Butão", "Cabo Verde", "Camarões", "Camboja", "Canadá", "Catar", "Cazaquistão", "Chade", "Chile", "China", "Chipre", "Colômbia", "Comores", "Congo-Brazzaville", "Coreia do Norte", "Coreia do Sul", "Costa do Marfim", "Costa Rica", "Croácia", "Cuba", "Dinamarca", "Djibuti", "Dominica", "Egito", "El Salvador", "Emirados Árabes Unidos", "Equador", "Eritreia", "Eslováquia", "Eslovênia", "Espanha", "Essuatíni", "Estados Unidos", "Estônia", "Etiópia", "Fiji", "Filipinas", "Finlândia", "França", "Gabão", "Gâmbia", "Gana", "Geórgia", "Granada", "Grécia", "Guatemala", "Guiana", "Guiné", "Guiné Equatorial", "Guiné-Bissau", "Haiti", "Honduras", "Hungria", "Iêmen", "Ilhas Marshall", "Índia", "Indonésia", "Irã", "Iraque", "Irlanda", "Islândia", "Israel", "Itália", "Jamaica", "Japão", "Jordânia", "Kiribati", "Kuwait", "Laos", "Lesoto", "Letônia", "Líbano", "Libéria", "Líbia", "Liechtenstein", "Lituânia", "Luxemburgo", "Macedônia do Norte", "Madagascar", "Malásia", "Malaui", "Maldivas", "Mali", "Malta", "Marrocos", "Maurício", "Mauritânia", "México", "Mianmar", "Micronésia", "Moçambique", "Moldávia", "Mônaco", "Mongólia", "Montenegro", "Namíbia", "Nauru", "Nepal", "Nicarágua", "Níger", "Nigéria", "Noruega", "Nova Zelândia", "Omã", "Países Baixos", "Palau", "Panamá", "Papua Nova Guiné", "Paquistão", "Paraguai", "Peru", "Polônia", "Portugal", "Quênia", "Quirguistão", "Reino Unido", "República Centro-Africana", "República Checa", "República Democrática do Congo", "República Dominicana", "Romênia", "Ruanda", "Rússia", "Samoa", "San Marino", "Santa Lúcia", "São Cristóvão e Neves", "São Tomé e Príncipe", "São Vicente e Granadinas", "Seicheles", "Senegal", "Serra Leoa", "Sérvia", "Singapura", "Síria", "Somália", "Sri Lanka", "Sudão", "Sudão do Sul", "Suécia", "Suíça", "Suriname", "Tailândia", "Tajiquistão", "Tanzânia", "Timor-Leste", "Togo", "Tonga", "Trinidad e Tobago", "Tunísia", "Turcomenistão", "Turquia", "Tuvalu", "Ucrânia", "Uganda", "Uruguai", "Uzbequistão", "Vanuatu", "Vaticano", "Venezuela", "Vietnã", "Zâmbia", "Zimbábue"
+];
+
 export default function UpdateData() {
-    const { user, error, isLoading } = useUser();
+    const { user, isLoading } = useUser();
     const router = useRouter()
 
     // Estados antigos
@@ -21,6 +24,10 @@ export default function UpdateData() {
     const [value_curso, setValueCurso] = useState('');
     const [value_ano, setValueAno] = useState('');
     const [value_semestre, setValueSemestre] = useState('');
+
+    // Estados adicionados
+    const [value_pais, setValuePais] = useState('Brasil');
+    const [value_onde_conheceu, setValueOndeConheceu] = useState('');
 
     const [avisoErro, setAvisoErro] = useState('')
     const [isLoadingForms, setIsLoadingForms] = useState(0)
@@ -38,6 +45,10 @@ export default function UpdateData() {
     const handleChangeCurso = (event) => setValueCurso(event.target.value);
     const handleChangeAno = (event) => setValueAno(event.target.value);
     const handleChangeSemestre = (event) => setValueSemestre(event.target.value);
+
+    // Handlers adicionados
+    const handleChangePais = (event) => setValuePais(event.target.value);
+    const handleChangeOndeConheceu = (event) => setValueOndeConheceu(event.target.value);
 
     if (isLoading) {
         return <TelaLoading />
@@ -93,7 +104,11 @@ export default function UpdateData() {
                     handleChangeAvisoErro(`Preencha o campo "Cpf" com mais de 4 caracteres`)
                     return 0
             }
-            switch (true) { // Novos campos comuns
+            switch (true) { // Novos campos comuns + País + Onde conheceu
+                case (value_pais == ""):
+                    handleChangeSetIsLoadingForms(0)
+                    handleChangeAvisoErro(`Selecione o "País"`)
+                    return 0
                 case (value_cidade.trim() == ""):
                     handleChangeSetIsLoadingForms(0)
                     handleChangeAvisoErro(`Preencha o campo "Cidade onde reside"`)
@@ -101,6 +116,10 @@ export default function UpdateData() {
                 case (value_data_nascimento.trim() == ""):
                     handleChangeSetIsLoadingForms(0)
                     handleChangeAvisoErro(`Preencha o campo "Data de Nascimento"`)
+                    return 0
+                case (value_onde_conheceu.trim() == ""):
+                    handleChangeSetIsLoadingForms(0)
+                    handleChangeAvisoErro(`Preencha o campo "Onde conheceu o evento"`)
                     return 0
                 case (value_situacao == ""):
                     handleChangeSetIsLoadingForms(0)
@@ -132,8 +151,10 @@ export default function UpdateData() {
                     "nome": value_name,
                     "numero_telefone": value_telefone,
                     "cpf": value_cpf,
+                    "pais": value_pais,
                     "cidade": value_cidade,
                     "data_nascimento": value_data_nascimento,
+                    "onde_conheceu": value_onde_conheceu,
                     "situacao_academica": value_situacao,
                     "curso": value_curso,
                     "ano_conclusao": value_ano,
@@ -194,13 +215,33 @@ export default function UpdateData() {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div className="flex flex-col space-y-1 text-black">
+                                <h1 className="text-slate-950">País</h1>
+                                <select
+                                    className="px-4 py-2 border rounded-lg focus:outline-none bg-white h-full"
+                                    value={value_pais}
+                                    onChange={handleChangePais}
+                                >
+                                    <option value="" disabled>Selecione seu país</option>
+                                    {PAISES.map((pais) => (
+                                        <option key={pais} value={pais}>{pais}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className="flex flex-col space-y-1">
                                 <h1 className="text-slate-950">Cidade onde reside</h1>
                                 <InputComponent placeholder="Sua cidade" value={value_cidade} onChange={handleChangeCidade} />
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <div className="flex flex-col space-y-1">
                                 <h1 className="text-slate-950">Data de nascimento</h1>
                                 <InputComponent type_text="date" value={value_data_nascimento} onChange={handleChangeDataNascimento} />
+                            </div>
+                            <div className="flex flex-col space-y-1">
+                                <h1 className="text-slate-950">Onde conheceu o evento?</h1>
+                                <InputComponent placeholder="Ex: Instagram, Amigos..." value={value_onde_conheceu} onChange={handleChangeOndeConheceu} />
                             </div>
                         </div>
 
