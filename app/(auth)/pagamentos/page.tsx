@@ -357,14 +357,33 @@ function PaymentSessionActive({
                 {/* RENDERIZAÇÃO CONDICIONAL DOS MÉTODOS */}
                 <div className='mt-2'>
                     {paymentType === "PIX" && (
+
                         <div className='flex flex-col items-center justify-center p-8 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl gap-4'>
-                            <p className='text-slate-600 font-medium text-center'>Escaneie o QR Code ou copie o código PIX</p>
-                            <div className='w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 font-bold'>
-                                FOTO DO QR CODE
-                            </div>
-                            <button className='mt-2 px-6 py-2 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors'>
-                                Copiar Código PIX
-                            </button>
+                            {
+                                dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.pixCode != null ?
+                                    <div>
+                                        <p className='text-slate-600 font-medium text-center'>Escaneie o QR Code ou copie o código PIX</p>
+                                        <div className='w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 font-bold'>
+
+                                            <img src="00020126360014BR.GOV.BCB.PIX0114+55119999999995204000053039865802BR5925NOME DO RECEBEDOR6009SAO PAULO62070503***6304ABCD">
+                                            </img>
+                                        </div>
+                                        <button className='mt-2 px-6 py-2 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors'>
+                                            Copiar Código PIX
+                                        </button>
+                                    </div> :
+                                    <div className='text-black'>
+                                        <div>
+                                            <p>Seu pix está pronto!</p>
+                                        </div>
+                                        <button
+                                            className='border-1 border-black'
+                                            onClick={() => {
+                                                window.open(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.paymentUrl, "_blank");
+                                            }}
+                                        >Ir para pagamento</button>
+                                    </div>
+                            }
                         </div>
                     )}
 
@@ -377,7 +396,7 @@ function PaymentSessionActive({
                 </div>
 
             </div>
-        </div>
+        </div >
     );
 }
 //
@@ -495,6 +514,18 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
         // se Deu tudo certo, recarregar a página
         window.location.reload();
     };
+
+    if (dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PENDING") {
+        <div>
+            <h1>Seu pagamento está sendo processado</h1>
+            <h1>Aguarde.</h1>
+        </div>
+    }
+    if (dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PAID") {
+        <div>
+            <h1>Você já realizou o pagamento!</h1>
+        </div>
+    }
 
     return (
         <div className='pagamentos-main'>
