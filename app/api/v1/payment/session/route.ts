@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         const ASAAS_URL_REDIRECT = process.env.ASAAS_URL_REDIRECT
 
         const modeloFetchAssas = {
-            "billingTypes": "PIX",
+            "billingTypes": ["PIX"],
             "minutesToExpire": 14,
             "chargeTypes": ["DETACHED"],
             "externalReference": `${userId}-ticket-session`,
