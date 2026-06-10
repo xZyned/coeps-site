@@ -20,6 +20,7 @@ export default interface PaymentTicketProps {
     },
     paymentConfig: ILoteAutomatico;
     type: "ticket" | "course";
+    status: "PENDING" | "PAID" | "UNPAID";
     paymentUrl: string;
     expiresAt: Date;
 }
