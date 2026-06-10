@@ -43,10 +43,10 @@ const TermModal: React.FC<ModalProps> = ({ isOpen, onClose, onConfirm }) => {
                     {/* Corpo do Termo */}
                     <div className="text-gray-600 text-base space-y-4 leading-relaxed max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
                         <p>
-                            Ao realizar minha inscrição no <strong className="font-semibold text-gray-800">COEPS (Congresso dos Estudantes e Profissionais da Saúde)</strong>, declaro estar ciente e de acordo com o tratamento dos meus dados pessoais fornecidos neste formulário, conforme disposto na <strong className="font-semibold text-gray-800">Lei Geral de Proteção de Dados Pessoais – LGPD (Lei nº 13.709/2018)</strong>.
+                            Ao realizar minha inscrição no <strong className="font-semibold text-gray-800">CIEPS (Congresso Internacional de Estudantes e Profissionais da Saúde)</strong>, declaro estar ciente e de acordo com o tratamento dos meus dados pessoais fornecidos neste formulário, conforme disposto na <strong className="font-semibold text-gray-800">Lei Geral de Proteção de Dados Pessoais – LGPD (Lei nº 13.709/2018)</strong>.
                         </p>
                         <p>
-                            Autorizo a organização do evento a coletar, armazenar, utilizar e, se necessário, compartilhar meus dados exclusivamente para fins relacionados à organização, comunicação, emissão de certificados, controle de participação e divulgação institucional do COEPS.
+                            Autorizo a organização do evento a coletar, armazenar, utilizar e, se necessário, compartilhar meus dados exclusivamente para fins relacionados à organização, comunicação, controle de participação e divulgação institucional do CIEPS.
                         </p>
                         <p>
                             Os dados coletados não serão utilizados para fins comerciais nem repassados a terceiros não envolvidos com o evento, respeitando os princípios de finalidade, necessidade e segurança previstos na LGPD.

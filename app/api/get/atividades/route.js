@@ -1,9 +1,9 @@
 import { connectToDatabase } from '../../../lib/mongodb'
 import { NextResponse } from 'next/server';
-import { getAccessToken } from '@auth0/nextjs-auth0';
+import { getAccessToken } from '@/lib/auth0-compat';
 import { execOnce } from 'next/dist/shared/lib/utils';
 import { ObjectId } from 'mongodb';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 //
 //
 // Exemplo de return:
@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic'
 // e quando eu digo isso é que provavelmente tem outras partes do site que precisam de todas as atividades para evitar bugs fiz
 // uma rota bem parecida mas que só apenas retorna as atividades estão disponíveis, ou seja, showToUser = true.
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
   try {
     // Verificando se está logado

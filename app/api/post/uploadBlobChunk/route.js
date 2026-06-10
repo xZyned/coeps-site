@@ -1,6 +1,6 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/lib/mongodb';
 
 // 👇 **CORREÇÃO: Mudar o runtime para 'edge'**
@@ -8,6 +8,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 
 const MAX_CHUNK_SIZE = 10 * 1024 * 1024; // 10MB por chunk
 
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         const { user } = await getSession(request);

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 // 👇 CORREÇÃO APLICADA AQUI
 import { connectToDatabase } from '@/lib/mongodb';
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request) {
     try {
         const { user } = await getSession(request);

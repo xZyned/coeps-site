@@ -1,13 +1,15 @@
 // pages/api/download.js
 import { ObjectId, GridFSBucket } from 'mongodb';
-import { withApiAuthRequired, getSession } from '@auth0/nextjs-auth0';
+import { withApiAuthRequired, getSession } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
 
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
     try {
-        const eventId = params["_id"];
+        const resolvedParams = await params;
+        const eventId = resolvedParams["_id"];
 
         const { db } = await connectToDatabase();
         const result = await db.collection("minicursos").find(
@@ -20,6 +22,6 @@ export const GET = withApiAuthRequired(async function GET(request, { params }) {
 
     } catch (error) {
         console.log(error.message);
-        return new Response(JSON.stringify({ message: error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe COEPS." }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ message: error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe CIEPS." }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 });

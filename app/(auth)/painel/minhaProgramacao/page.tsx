@@ -625,7 +625,7 @@ const RegrasModal = ({ onClose }) => {
             <div className="regras-modal-section">
               <h3 className="regras-modal-section-title">4. Vestimenta</h3>
               <p className="regras-modal-section-text">
-                É importante que os participantes das ligas, professores e congressistas utilizem roupas adequadas, sapatos fechados e estejam portando o crachá de identificação do COEPS. Nos minicursos realizados em laboratórios, é obrigatório o uso de jaleco, visando a segurança e o cumprimento das normas institucionais.
+                É importante que os participantes das ligas, professores e congressistas utilizem roupas adequadas, sapatos fechados e estejam portando o crachá de identificação do CIEPS. Nos minicursos realizados em laboratórios, é obrigatório o uso de jaleco, visando a segurança e o cumprimento das normas institucionais.
               </p>
               <p className="regras-modal-section-text">
                 Os manequins ou estruturas disponibilizadas pelo CSR devem ser manipulados com cautela e utilizando luvas para que não ocorra nenhuma intercorrência.

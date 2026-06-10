@@ -73,7 +73,7 @@ const MinhasInformacoes = () => {
       const responseJson = await response.json();
       
             if (!response.ok) {
-        setMessage(responseJson.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro continue, entre em contato com a equipe COEPS.");
+        setMessage(responseJson.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro continue, entre em contato com a equipe CIEPS.");
         setIsModal(true);
         return undefined;
       }
@@ -339,11 +339,11 @@ const PasswordCard = ({
                                 </div>
         <div className="form-content">
           <p className="intro-text">
-            Para alterar sua senha, entre em contato com a equipe COEPS através do email: dadg.imepac@gmail.com ou pelo WhatsApp: (15) 98812-3011
+            Para alterar sua senha, entre em contato com a equipe CIEPS através do email: dadg.imepac@gmail.com ou pelo WhatsApp: (15) 98812-3011
           </p>
                                         <button
             className="password-button"
-            onClick={() => setModal("Para alterar sua senha, entre em contato com a equipe COEPS através do email: dadg.imepac@gmail.com ou pelo WhatsApp: (15) 98812-3011")}
+            onClick={() => setModal("Para alterar sua senha, entre em contato com a equipe CIEPS através do email: dadg.imepac@gmail.com ou pelo WhatsApp: (15) 98812-3011")}
           >
             <AlertCircle size={18} style={{ marginRight: '8px' }} />
             {labelButton}

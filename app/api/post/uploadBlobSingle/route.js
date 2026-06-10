@@ -1,6 +1,6 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/lib/mongodb';
 import { fileTypeFromBuffer } from 'file-type';
 
@@ -15,6 +15,7 @@ const ALLOWED_MIME_TYPES = [
     'application/zip', 'application/x-rar-compressed', 'application/gzip'
 ];
 
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     const { user } = await getSession(request);
     const userId = user.sub.replace("auth0|", "");

@@ -1,7 +1,7 @@
+@import '../styles/fonts.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import '../styles/fonts.css';
 
 
 /* Chrome, Safari, Edge, Opera */
@@ -17,9 +17,18 @@ input[type=number] {
 }
 
 :root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
+  --foreground-rgb: 26, 26, 26;
+  --background-start-rgb: 244, 241, 234;
+  --background-end-rgb: 244, 241, 234;
+  --cieps-paper: #f4f1ea;
+  --cieps-paper-strong: #fffdf8;
+  --cieps-ink: #1a1a1a;
+  --cieps-muted: #6f695f;
+  --cieps-line: rgba(26, 26, 26, 0.14);
+  --cieps-red: #a32d2d;
+  --cieps-blue: #185fa5;
+  --cieps-yellow: #ef9f27;
+  --cieps-shadow: 0 18px 42px rgba(26, 26, 26, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,12 +41,122 @@ input[type=number] {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(244, 241, 234, 0.96)),
     rgb(var(--background-start-rgb));
+  font-family: var(--cieps-body);
+  letter-spacing: 0;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+}
+
+.cieps-display {
+  font-family: var(--cieps-display);
+}
+
+.cieps-kicker {
+  color: var(--cieps-red);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.cieps-button,
+.cieps-button-outline {
+  align-items: center;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--cieps-body);
+  font-size: 0.94rem;
+  font-weight: 700;
+  gap: 0.55rem;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.85rem 1.35rem;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.cieps-button {
+  background: var(--cieps-red);
+  color: #fff;
+}
+
+.cieps-button:hover {
+  background: #8f2323;
+  transform: translateY(-1px);
+}
+
+.cieps-button-outline {
+  background: transparent;
+  border-color: rgba(24, 95, 165, 0.58);
+  color: var(--cieps-blue);
+}
+
+.cieps-button-outline:hover {
+  background: rgba(24, 95, 165, 0.08);
+  transform: translateY(-1px);
+}
+
+.cieps-surface {
+  background: rgba(255, 253, 248, 0.94);
+  border: 1px solid var(--cieps-line);
+  box-shadow: var(--cieps-shadow);
+}
+
+.cieps-lines {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      var(--cieps-red) 0 2px,
+      transparent 2px 12px,
+      var(--cieps-yellow) 12px 14px,
+      transparent 14px 24px,
+      var(--cieps-blue) 24px 26px,
+      transparent 26px 36px
+    );
+  height: 16px;
+  width: min(100%, 420px);
+}
+
+.glass-container {
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid var(--cieps-line);
+  border-radius: 8px;
+  box-shadow: var(--cieps-shadow);
+  color: var(--cieps-ink);
+}
+
+.glass-container:hover {
+  background: rgba(255, 253, 248, 0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 @layer utilities {

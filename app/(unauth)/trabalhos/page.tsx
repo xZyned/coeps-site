@@ -1,24 +1,31 @@
-'use client'
-import React, { useState, useEffect } from 'react';
-import Link from "next/link";
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { IAcademicWorksProps } from '@/lib/types/academicWorks/academicWorks.t';
 import {
-  Loader2,
-  Clock,
-  Info,
-  FileText,
-  Calendar,
-  Users,
-  Award,
+  ArrowRight,
+  CalendarDays,
+  Compass,
   ExternalLink,
+  FileText,
+  Loader2,
   Send,
-  Compass
+  Sparkles,
 } from 'lucide-react';
 import './style.css';
 
-const Trabalhos = () => {
+function formatShortDate(value?: string) {
+  if (!value) return '--/--';
+  return new Date(value).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+  });
+}
+
+export default function Trabalhos() {
   const [config, setConfig] = useState<IAcademicWorksProps | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,8 +37,8 @@ const Trabalhos = () => {
         }
         const data: IAcademicWorksProps = await response.json();
         setConfig(data);
-      } catch (error) {
-        setError(error.message);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : 'Erro inesperado');
       } finally {
         setLoading(false);
       }
@@ -41,179 +48,132 @@ const Trabalhos = () => {
   }, []);
 
   return (
-    <div className="trabalhos-main">
-      {/* Header */}
-      <section className="trabalhos-header">
-        <div className="header-content">
-          <h1 className="header-title">TRABALHOS</h1>
+    <main className="trabalhos-page">
+      <section className="trabalhos-hero">
+        <div>
+          <span className="cieps-kicker">Trabalhos cientificos</span>
+          <h1 className="cieps-display">Pesquisa com rosto, contexto e alcance internacional.</h1>
+          <p>
+            O VIII CIEPS recebe producoes academicas voltadas a saude, educacao e
+            cuidado. A 1ª Edicao Internacional amplia a conversa sem perder o rigor
+            e a clareza do processo.
+          </p>
         </div>
+
+        <aside className="trabalhos-hero-card cieps-surface">
+          <Sparkles size={22} />
+          <strong>{config?.isOpen ? 'Submissoes abertas' : 'Edital em acompanhamento'}</strong>
+          <span>
+            {loading
+              ? 'Verificando o status atual.'
+              : config?.isOpen
+                ? 'Envie seu trabalho e acompanhe os prazos.'
+                : 'A pagina permanece pronta para novas atualizacoes.'}
+          </span>
+        </aside>
       </section>
 
-      {/* Seção de introdução */}
-      <section className="glass-container trabalhos-intro">
-        <h1 className="section-title">SUBMISSÃO DE TRABALHOS</h1>
-        <p className="intro-text">
-          O VII COEPS convida acadêmicos, profissionais da saúde e áreas afins a participarem
-          da submissão de trabalhos inéditos. Esta é uma oportunidade única para compartilhar
-          suas pesquisas e contribuir para o avanço da ciência na área da saúde.
-        </p>
-      </section>
-
-      {/* Seção de status */}
-      <section className="status-section">
-        <div className="status-container glass-container">
+      <section className="trabalhos-status-grid">
+        <article className="cieps-surface trabalhos-status-card">
+          <span className="cieps-kicker">Status</span>
           {loading ? (
-            <div className="loading-container">
-              <div className="loading-spinner">
-                <Loader2 className="spinner-icon" />
-              </div>
-              <h2 className="loading-text">CARREGANDO INFORMAÇÕES</h2>
-              <div className="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          ) : config?.isOpen ? (
-            <div className="details-container">
-              <div className="details-icon">
-                <FileText className="info-icon" />
-              </div>
-              <h2 className="details-text">SUBMISSÕES ABERTAS</h2>
-              <p className="details-subtext">As submissões de trabalhos estão abertas! Confira as informações abaixo.</p>
+            <div className="trabalhos-inline-state">
+              <Loader2 className="spin" size={18} />
+              <strong>Carregando informacoes</strong>
             </div>
           ) : (
-            <div className="empty-container">
-              <div className="empty-icon">
-                <Clock className="clock-icon" />
-              </div>
-              <h2 className="empty-text">SUBMISSÕES ENCERRADAS</h2>
-              <p className="empty-subtext">As submissões de trabalhos foram encerradas. Obrigado pela participação!</p>
-            </div>
+            <strong>{config?.isOpen ? 'Submissoes abertas' : 'Submissoes encerradas'}</strong>
           )}
-        </div>
+          <p>
+            {error
+              ? 'Nao foi possivel carregar todos os detalhes agora.'
+              : config?.isOpen
+                ? 'Consulte edital, guia e painel do participante para enviar.'
+                : 'Os resultados e proximas chamadas seguem publicados nesta pagina.'}
+          </p>
+        </article>
+
+        <article className="cieps-surface trabalhos-date-card">
+          <CalendarDays size={20} />
+          <strong>{formatShortDate(config?.data_limite_submissao)}</strong>
+          <span>Prazo de submissao</span>
+        </article>
+
+        <article className="cieps-surface trabalhos-date-card">
+          <CalendarDays size={20} />
+          <strong>{formatShortDate(config?.data_publicacao_resultados)}</strong>
+          <span>Publicacao de resultados</span>
+        </article>
       </section>
 
-      {/* Seção de cards de dados */}
-      {!loading && config?.isOpen && (
-        <section className="cards-section">
-          <div className="cards-container">
-            <div className="data-card glass-container">
-              <div className="card-data">
-                {config?.data_limite_submissao ?
-                  new Date(config.data_limite_submissao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) :
-                  '--/--'
-                }
-              </div>
-              <div className="card-text">Limite de Submissão</div>
-            </div>
+      <section className="trabalhos-content-grid">
+        <article className="cieps-surface trabalhos-copy-card">
+          <span className="cieps-kicker">Convite academico</span>
+          <h2 className="cieps-display">Um congresso que transforma leitura em autoria.</h2>
+          <p>
+            O Diretório Acadêmico Diogo Guimarães, junto ao IMEPAC Araguari, estrutura
+            o VIII Congresso Internacional de Estudantes e Profissionais da Saúde para
+            receber estudos inéditos e relevantes. O foco é abrir espaço para trabalhos
+            que contribuam com uma prática mais humana, crítica e conectada ao presente.
+          </p>
+          <p>
+            O processo de submissão permanece centralizado no painel do congressista,
+            com materiais de apoio publicados nesta página sempre que disponíveis.
+          </p>
 
-            <div className="data-card glass-container">
-              <div className="card-data">
-                {config?.data_publicacao_resultados ?
-                  new Date(config.data_publicacao_resultados).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) :
-                  '--/--'
-                }
-              </div>
-              <div className="card-text">Publicação de Resultados</div>
+          {config?.isOpen && (
+            <div className="trabalhos-action-row">
+              {config.link_edital && (
+                <Link href={config.link_edital} target="_blank" className="cieps-button-outline">
+                  <FileText size={18} />
+                  Ver edital
+                </Link>
+              )}
+              {config.link_guia && (
+                <Link href={config.link_guia} target="_blank" className="cieps-button-outline">
+                  <Compass size={18} />
+                  Ver guia
+                </Link>
+              )}
+              <Link href="/painel/trabalhos" className="cieps-button">
+                <Send size={18} />
+                Enviar trabalho
+              </Link>
             </div>
+          )}
+        </article>
+
+        <article className="cieps-surface trabalhos-publicacoes">
+          <div className="trabalhos-section-heading">
+            <span className="cieps-kicker">Publicacoes</span>
+            <h2 className="cieps-display">Resultados e documentos liberados.</h2>
           </div>
-        </section>
-      )}
-
-      {/* Seção de publicações */}
-      <section className="publications-section">
-        <div className="publications-container">
-          <h2 className="publications-title">PUBLICAÇÕES</h2>
 
           {loading ? (
-            <div className="loading-container">
-              <div className="loading-spinner">
-                <Loader2 className="spinner-icon" />
-              </div>
-              <h3 className="loading-text">CARREGANDO PUBLICAÇÕES</h3>
+            <div className="trabalhos-inline-state">
+              <Loader2 className="spin" size={18} />
+              <strong>Carregando publicacoes</strong>
             </div>
-          ) : config?.resultados && config.resultados.length > 0 ? (
-            <div className="publications-list">
-              {config.resultados.map((publication, index) => (
-                <div key={index} className="publication-item glass-container">
-                  <Link href={publication.link} target="_blank" className="publication-link">
-                    <FileText className="publication-icon" />
-                    {publication.titulo}
-                    <ExternalLink size={16} />
-                  </Link>
-                </div>
+          ) : config?.resultados?.length ? (
+            <div className="trabalhos-publication-list">
+              {config.resultados.map((publication) => (
+                <Link key={publication.link} href={publication.link} target="_blank">
+                  <FileText size={18} />
+                  <span>{publication.titulo}</span>
+                  <ExternalLink size={16} />
+                </Link>
               ))}
             </div>
           ) : (
-            <div className="empty-container">
-              <div className="empty-icon">
-                <Award className="clock-icon" />
-              </div>
-              <h3 className="empty-text">NENHUMA PUBLICAÇÃO DISPONÍVEL</h3>
-              <p className="empty-subtext">As publicações serão divulgadas em breve!</p>
-            </div>
+            <p>As publicacoes oficiais serao exibidas aqui assim que forem disponibilizadas.</p>
           )}
-        </div>
-      </section>
 
-      {/* Seção de descrição */}
-      <section className="description-section">
-        <div className="description-container">
-          <div className="description-text">
-            {!loading && config?.isOpen ? (
-              <>
-                O Diretório Acadêmico Diogo Guimarães (DADG) do curso de graduação em Medicina do Centro Universitário IMEPAC Araguari apresenta o{' '}
-                <span className="description-highlight">VII Congresso dos Estudantes e Profissionais de Saúde (COEPS)</span> que possui como tema
-                &ldquo;O Novo Paradigma da Saúde: Burnout, Tecnologia e Ética&rdquo;. Com o intuito de incentivar a participação dos acadêmicos,
-                profissionais da saúde e áreas afins em atividades de pesquisa, visando complementar a formação acadêmica e enriquecer conhecimentos,
-                declara-se aberto o edital para a submissão de trabalhos inéditos pertinentes à área da saúde.
-              </>
-            ) : (
-              <>
-                O Diretório Acadêmico Diogo Guimarães (DADG) do curso de Medicina do Centro Universitário IMEPAC Araguari está preparando o{' '}
-                <span className="description-highlight">VII Congresso dos Estudantes e Profissionais de Saúde (COEPS)</span>, com o tema
-                &ldquo;Inovação em saúde: Conectando Ciência Moderna ao Cuidado Tradicional&rdquo;.{' '}
-                <span className="description-highlight">Atualmente, o edital para a submissão de trabalhos inéditos ainda não está aberto</span>.
-                No entanto, em breve, divulgaremos mais informações sobre como participar e submeter suas pesquisas. Fique atento ao nosso site
-                e às nossas redes sociais para atualizações e detalhes sobre o processo de submissão.
-              </>
-            )}
-          </div>
-        </div>
+          <Link href="/anais" className="trabalhos-more-link">
+            Consultar anais
+            <ArrowRight size={16} />
+          </Link>
+        </article>
       </section>
-
-      {/* Seção de botões */}
-      {!loading && config?.isOpen && (
-        <section className="buttons-section">
-          <div className="buttons-container">
-            {config?.link_edital && (
-              <Link href={config.link_edital} target="_blank">
-                <button className="action-button">
-                  <FileText size={20} style={{ marginRight: '8px' }} />
-                  VER EDITAL
-                </button>
-              </Link>
-            )}
-            {config?.link_guia && (
-              <Link href={config.link_guia} target="_blank">
-                <button className="action-button">
-                  <Compass size={20} style={{ marginRight: '8px' }} />
-                  VER GUIA
-                </button>
-              </Link>
-            )}
-            <Link href="/painel/trabalhos">
-              <button className="action-button">
-                <Send size={20} style={{ marginRight: '8px' }} />
-                ENVIAR TRABALHO
-              </button>
-            </Link>
-          </div>
-        </section>
-      )}
-    </div>
+    </main>
   );
-};
-
-export default Trabalhos;
+}

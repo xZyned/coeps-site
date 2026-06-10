@@ -8,10 +8,10 @@ import { Download } from 'lucide-react';
 const documentHtmlTemplate = `
 <div id="document-content" style="padding: 20px; font-family: 'Times New Roman', Times, serif;">
   <div style="text-align: center; margin-bottom: 20px;">
-    <img src="/documento-anexado.png" alt="Logo VII COEPS" style="max-width: 300px; height: auto; display: block; margin: 0 auto;">
+    <img src="/documento-anexado.png" alt="Logo do VIII CIEPS" style="max-width: 300px; height: auto; display: block; margin: 0 auto;">
   </div>
-  <h1 style="text-align: center; font-size: 24px; margin-bottom: 20px;color: #281802ff;">Comprovante de participação do VII COEPS</h1>
-  <p style="font-size: 16px; line-height: 1.6; text-align: justify;color: #281802ff;">Certificamos que o congressista XXX, está devidamente registrado, e enquanto participante devido, fará parte do VII Congresso dos Estudantes e Profissionais de Saúde (COEPS), que ocorrerá devidamente nos dias 13/11/2025, das 17:00 às 22:00, 14/11/2025 das 8:00 às 22:00,  15/11/2025 das 8:00 às 22:00 e 16/11/2025 das 8:00 às 13:00.</p>
+  <h1 style="text-align: center; font-size: 24px; margin-bottom: 20px;color: #281802ff;">Comprovante de participação do VIII CIEPS</h1>
+  <p style="font-size: 16px; line-height: 1.6; text-align: justify;color: #281802ff;">Certificamos que o congressista XXX está devidamente registrado para participar do VIII Congresso Internacional de Estudantes e Profissionais da Saúde, realizado em Araguari entre 12/11/2026 e 15/11/2026.</p>
 </div>
 `;
 
@@ -51,7 +51,7 @@ export default function DocumentoAnexadoPage() {
       // Configurações para o html2pdf para melhor formatação
       const opt: any = {
         margin:       [10, 10, 10, 10] as [number, number, number, number],
-        filename:     'documento_coeps.pdf',
+        filename:     'documento_cieps.pdf',
         image:        { type: 'png', quality: 1.0 },
         html2canvas:  { scale: 2, logging: true, dpi: 192, letterRendering: true },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }

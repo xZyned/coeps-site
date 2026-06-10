@@ -1,9 +1,9 @@
 import { ObjectId } from 'mongodb';
-import QRCode from 'qrcode';
-import { withApiAuthRequired, getSession } from '@auth0/nextjs-auth0';
+import { withApiAuthRequired, getSession } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async (req) => {
   try {
     const session = await getSession(req);

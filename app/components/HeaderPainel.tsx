@@ -1,184 +1,90 @@
 'use client'
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Menu, X, LogOut, Home, FileText, Calendar, Activity, CreditCard, User, Award } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, CreditCard, FileText, Home, LogOut, Menu, User, X } from 'lucide-react';
 
-const HeaderPainel = ({ isPayed = true }: { isPayed: boolean }) => {
-    const not_payed = "Realize o pagamento para ter acesso ao site completo"
-    const [menuAberto, setMenuAberto] = useState(false);
-    const [isScrolled, setIsScrolled] = useState(false);
+const menuItems = [
+  { name: 'Inicio', href: '/', icon: <Home size={16} /> },
+  { name: 'Minha pagina', href: '/painel', icon: <User size={16} /> },
+  { name: 'Trabalhos', href: '/painel/trabalhos', icon: <FileText size={16} /> },
+  { name: 'Programacao', href: '/painel/minhaProgramacao', icon: <Calendar size={16} /> },
+  { name: 'Pagamentos', href: '/pagamentos', icon: <CreditCard size={16} /> },
+];
 
-    const toggleMenu = () => {
-        setMenuAberto(!menuAberto);
-    };
+export default function HeaderPainel({ isPayed = true }: { isPayed: boolean }) {
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-    useEffect(() => {
-        const handleScroll = () => {
-            const scrollTop = window.scrollY;
-            setIsScrolled(scrollTop > 50);
-        };
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+  return (
+    <header className={`cieps-panel-header ${isScrolled ? 'is-scrolled' : ''}`}>
+      <div className="cieps-panel-header-inner">
+        <Link href="/" prefetch={false} className="cieps-panel-brand">
+          <Image
+            src="/cieps/cieps-lockup-horizontal.png"
+            width={420}
+            height={136}
+            alt="VIII CIEPS"
+          />
+        </Link>
 
-    const menuItems = [
-        { name: 'Início', href: '/', icon: <Home size={16} /> },
-        { name: 'Minha Página', href: '/painel', icon: <User size={16} /> },
-        { name: 'Trabalhos', href: '/painel/trabalhos', icon: <FileText size={16} /> },
-        { name: 'Programação', href: '/painel/minhaProgramacao', icon: <Calendar size={16} /> },
-        { name: 'Atividades', href: '/painel/atividades', icon: <Activity size={16} /> },
-        { name: 'Pagamentos', href: '/pagamentos', icon: <CreditCard size={16} /> },
-    ];
+        <nav className="cieps-panel-nav" aria-label="Navegacao do congressista">
+          {menuItems.map((item) => (
+            <Link key={item.name} href={item.href} prefetch={false}>
+              {item.icon}
+              <span>{item.name}</span>
+            </Link>
+          ))}
+        </nav>
 
-    return (
-        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-            ? 'bg-[#541A2C] shadow-lg border-b border-[#541A2C]/20'
-            : 'bg-[#541A2C]'
-            }`}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <nav className={`flex items-center justify-between transition-all duration-300 ${isScrolled ? 'h-12 lg:h-14' : 'h-14 lg:h-16'
-                    }`}>
-                    {/* Logo */}
-                    <div className="flex-shrink-0">
-                        <Link href="/" prefetch={false} className="flex items-center group">
-                            <div className="relative overflow-hidden rounded-lg transition-all duration-300 group-hover:scale-105">
-                                <Image
-                                    src="/Logo01.png"
-                                    width={isScrolled ? 60 : 90}
-                                    height={isScrolled ? 60 : 90}
-                                    alt="COEPS Logo"
-                                    className="transition-all duration-300"
-                                />
-                            </div>
-                        </Link>
-                    </div>
+        <div className="cieps-panel-actions">
+          {!isPayed && <span className="cieps-panel-alert">Pagamento pendente</span>}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/auth/logout" className="cieps-panel-logout">
+            <LogOut size={16} />
+            <span>Sair</span>
+          </a>
+        </div>
 
-                    {/* Desktop Menu */}
-                    <div className="hidden lg:flex items-center space-x-1">
-                        {isPayed ? (
-                            <>
-                                {menuItems.map((item) => (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        prefetch={false}
-                                        className={`relative px-3 py-2 font-medium text-white hover:text-[#D8D9DA] transition-all duration-300 group flex items-center gap-2 ${isScrolled ? 'text-xs' : 'text-sm'
-                                            }`}
-                                    >
-                                        <span className="opacity-80 group-hover:opacity-100 transition-opacity duration-300">
-                                            {item.icon}
-                                        </span>
-                                        <span className="relative z-10">{item.name}</span>
-                                        <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-[#D8D9DA] group-hover:w-full group-hover:left-0 transition-all duration-300"></div>
-                                    </Link>
-                                ))}
-                            </>
-                        ) : (
-                            <div className='flex flex-row space-x-2 items-center content-center justify-center'>
-                                <div className="px-3 py-2 text-sm font-medium text-[#541A2C] bg-yellow-100 rounded-lg border border-yellow-200">
-                                    {not_payed}
-                                </div>
-                                <div>
-                                    <Link
-                                        href={"/painel/certificados"}
-                                        prefetch={false}
-                                        className={`relative px-3 py-2 font-medium text-white hover:text-[#D8D9DA] transition-all duration-300 group flex items-center gap-2 ${isScrolled ? 'text-xs' : 'text-sm'
-                                            }`}
-                                    >
-                                        <span className="opacity-80 group-hover:opacity-100 transition-opacity duration-300">
-                                            <Award width={15} />
-                                        </span>
-                                        <span className="relative z-10">Meus Certificados</span>
-                                        <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-[#D8D9DA] group-hover:w-full group-hover:left-0 transition-all duration-300"></div>
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
+        <button
+          type="button"
+          className="cieps-panel-menu"
+          aria-label={menuAberto ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={menuAberto}
+          onClick={() => setMenuAberto((value) => !value)}
+        >
+          {menuAberto ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
 
-                        {/* Logout Button */}
-                        <a href="/api/auth/logout">
-                            <button className={`ml-3 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-all duration-300 flex items-center gap-2 ${isScrolled ? 'text-xs px-3 py-1.5' : 'text-sm px-4 py-2'
-                                }`}>
-                                <LogOut size={isScrolled ? 14 : 16} />
-                                LOGOUT
-                            </button>
-                        </a>
-                    </div>
-
-                    {/* Mobile Menu Button */}
-                    <div className="lg:hidden">
-                        <button
-                            onClick={toggleMenu}
-                            className="p-2 rounded-lg bg-[#541A2C]/20 hover:bg-[#541A2C]/30 transition-all duration-300"
-                        >
-                            {menuAberto ? (
-                                <X size={20} className="text-white" />
-                            ) : (
-                                <Menu size={20} className="text-white" />
-                            )}
-                        </button>
-                    </div>
-                </nav>
-
-                {/* Mobile Menu */}
-                {menuAberto && (
-                    <div className="lg:hidden">
-                        <div className="px-2 pt-2 pb-3 space-y-1 rounded-lg mt-2 shadow-lg">
-                            {isPayed ? (
-                                <>
-                                    {menuItems.map((item) => (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            prefetch={false}
-                                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:text-[#541A2C] hover:bg-gray-50 rounded-lg transition-all duration-300"
-                                            onClick={() => setMenuAberto(false)}
-                                        >
-                                            <span className="opacity-70">{item.icon}</span>
-                                            {item.name}
-                                        </Link>
-                                    ))}
-
-                                    {/* Mobile Logout Button */}
-                                    <div className="px-3 py-2">
-                                        <Link href="/api/auth/logout" prefetch={false} onClick={() => setMenuAberto(false)}>
-                                            <button className="w-full px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-all duration-300 flex items-center justify-center gap-2">
-                                                <LogOut size={16} />
-                                                LOGOUT
-                                            </button>
-                                        </Link>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className='flex flex-col space-x-2 items-center content-center justify-center'>
-                                    <div className="px-3 py-2 text-sm font-medium text-[#541A2C] bg-yellow-100 rounded-lg border border-yellow-200">
-                                        {not_payed}
-                                    </div>
-                                    <div>
-                                        <Link
-                                            href={"/painel/certificados"}
-                                            prefetch={false}
-                                            className={`relative px-3 py-2 font-medium text-white hover:text-[#D8D9DA] transition-all duration-300 group flex items-center gap-2 ${isScrolled ? 'text-xs' : 'text-sm'
-                                                }`}
-                                        >
-                                            <span className="opacity-80 group-hover:opacity-100 transition-opacity duration-300">
-                                                <Award width={15} />
-                                            </span>
-                                            <span className="relative z-10">Meus Certificados</span>
-                                            <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-[#D8D9DA] group-hover:w-full group-hover:left-0 transition-all duration-300"></div>
-                                        </Link>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
-        </header>
-    );
-};
-
-export default HeaderPainel;
+      {menuAberto && (
+        <div className="cieps-panel-mobile">
+          {menuItems.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              prefetch={false}
+              onClick={() => setMenuAberto(false)}
+            >
+              {item.icon}
+              <span>{item.name}</span>
+            </Link>
+          ))}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/auth/logout" onClick={() => setMenuAberto(false)}>
+            <LogOut size={16} />
+            <span>Sair</span>
+          </a>
+        </div>
+      )}
+    </header>
+  );
+}

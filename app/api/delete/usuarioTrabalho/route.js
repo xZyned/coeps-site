@@ -1,9 +1,10 @@
 import { ObjectId, GridFSBucket } from 'mongodb';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { del } from '@vercel/blob';
 
 
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         // Verificando se o usuário está logado e as datas de submissão
@@ -39,7 +40,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
         return Response.json({ message: 'O arquivo foi excluído com sucesso!' }, { status: 200 });
     } catch (error) {
         console.log(error);
-        return Response.json({ message: error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o problema persista, entre em contato com a equipe COEPS" }, { status: error.status || 403 });
+        return Response.json({ message: error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o problema persista, entre em contato com a equipe CIEPS" }, { status: error.status || 403 });
     }
 });
 

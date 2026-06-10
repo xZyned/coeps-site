@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { getAccessToken, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getAccessToken, withApiAuthRequired } from '@/lib/auth0-compat';
 import { execOnce } from 'next/dist/shared/lib/utils';
-import { getSession } from '@auth0/nextjs-auth0';
+import { getSession } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/app/lib/mongodb';
 //
 //
 //
 //
 //
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         //
@@ -81,7 +82,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
         // valor = resultPagamento[0].valorAVista => o safado do bug aqui
 
         const data_vencimento = new Date().toISOString().split("T")[0] // retorna o dia de hoje.
-        const descricao = resultPagamento[0].nome// 'Primeiro lote para entrada no evento IV COEPS.'
+        const descricao = resultPagamento[0].nome// 'Primeiro lote para entrada no VIII CIEPS.'
         const desconto = 0
 
         const options = {

@@ -1,55 +1,64 @@
-'use client'
+import Image from 'next/image';
+import { BriefcaseBusiness, Compass, UsersRound } from 'lucide-react';
 import './style.css';
+
+const organizerCards = [
+  {
+    icon: <BriefcaseBusiness size={20} />,
+    title: 'Direcao',
+    description: 'Responsavel pela conducao institucional e pelos marcos do congresso.',
+  },
+  {
+    icon: <Compass size={20} />,
+    title: 'Coordenacoes',
+    description: 'Frentes que articulam experiencia, programacao e relacionamento.',
+  },
+  {
+    icon: <UsersRound size={20} />,
+    title: 'Equipe de apoio',
+    description: 'Pessoas que sustentam a operacao e acolhem o publico durante o evento.',
+  },
+];
 
 export default function Organizadores() {
   return (
-    <main className="organizadores-main-gradient pt-20 lg:pt-24">
-      {/* Seção principal */}
-      <section className="glass-container w-full max-w-6xl mx-auto mt-8">
-        <h1 className="letreiro-title">ORGANIZADORES</h1>
-        
-        {/* Container "Em breve" */}
-        <div className="em-breve-container">
-          <div className="em-breve-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16">
-              <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
-            </svg>
-          </div>
-          
-          <h2 className="em-breve-title">EM BREVE</h2>
-          
-          <p className="em-breve-description">
-            Estamos preparando uma seção especial para apresentar nossa equipe de organizadores.
-            <br />
-            Em breve você conhecerá todos os profissionais que fazem o COEPS acontecer!
+    <main className="organizadores-page">
+      <section className="organizadores-hero">
+        <div>
+          <span className="cieps-kicker">Organizacao</span>
+          <h1 className="cieps-display">A equipe do VIII CIEPS ganha uma apresentacao a altura.</h1>
+          <p>
+            Estamos preparando esta seção para publicar a composição oficial do congresso
+            com a mesma clareza da nova identidade. O encontro já tem assinatura definida:
+            VIII CIEPS, 1ª Edição Internacional.
           </p>
-          
-          <div className="em-breve-decoration">
-            <div className="decoration-line"></div>
-            <div className="decoration-dot"></div>
-            <div className="decoration-line"></div>
-          </div>
         </div>
+        <Image
+          src="/cieps/cieps-shirt-chair.png"
+          width={520}
+          height={420}
+          alt="Aplicacao da identidade visual do CIEPS em camiseta e mobiliario"
+        />
       </section>
 
-      {/* Seção de informações adicionais */}
-      <section className="glass-container w-full max-w-6xl mx-auto mt-8">
-        <h2 className="section-subtitle">SOBRE A ORGANIZAÇÃO</h2>
-        <div className="info-grid">
-          <div className="info-card">
-            <h3>Diretoria</h3>
-            <p>Equipe dedicada à coordenação geral do evento</p>
-          </div>
-          <div className="info-card">
-            <h3>Coordenadorias</h3>
-            <p>Grupos especializados em diferentes áreas do congresso</p>
-          </div>
-          <div className="info-card">
-            <h3>Colaboradores</h3>
-            <p>Profissionais e estudantes que contribuem para o sucesso</p>
-          </div>
-        </div>
+      <section className="organizadores-grid">
+        {organizerCards.map((card) => (
+          <article key={card.title} className="cieps-surface organizadores-card">
+            <span>{card.icon}</span>
+            <h2 className="cieps-display">{card.title}</h2>
+            <p>{card.description}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="organizadores-note cieps-surface">
+        <span className="cieps-kicker">Em breve</span>
+        <h2 className="cieps-display">Nomes, frentes e responsabilidades serao publicados aqui.</h2>
+        <p>
+          A pagina fica pronta desde ja para receber a equipe definitiva sem precisar
+          de outra virada visual.
+        </p>
       </section>
     </main>
   );
-} 
+}

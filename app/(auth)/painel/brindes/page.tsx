@@ -22,7 +22,7 @@ export default function Home() {
                         </div>
                         <div className="">
                             <p className="text-[#54595f] text-justify">
-                                A equipe COEPS está trabalhando muuito para conseguir vários prêmios aos nossos congressistas! Aqui você encontra, brindes e cupons de descontos
+                                A equipe CIEPS está trabalhando para conseguir benefícios aos nossos congressistas. Aqui você encontra brindes e cupons de desconto.
                                 exclusivos para você!
                             </p>
                         </div>
@@ -33,7 +33,7 @@ export default function Home() {
                         <BannerAtividade color={generateHexColor()} activity={{
                             emoji: "🪡",
                             name: "EasySuture",
-                            description: "Criamos o cupom 'COEPS2024' com 12% de desconto que poderá ser usado por qualquer participante do evento para compras em nossa loja! O cupom ficará válido até 30 dias após o fim do evento!"
+                            description: "Criamos o cupom 'CIEPS2026' com 12% de desconto que poderá ser usado por qualquer participante do evento para compras em nossa loja. O cupom ficará válido até 30 dias após o fim do evento."
                         }} />
 
                     </div>

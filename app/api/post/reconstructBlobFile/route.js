@@ -1,11 +1,12 @@
 import { put, del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/lib/mongodb';
 
 // 👇 **CORREÇÃO: Mudar o runtime para 'edge'**
 // 5 minutos
 
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     const { user } = await getSession(request);
     const userId = user.sub.replace("auth0|", "");

@@ -2,12 +2,13 @@
 import { connectToDatabase } from '../../../lib/mongodb'
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 
 //
 //
 // Aqui ele sempre pega os mesmos parametros para realizar o update.
 // assim, SEMPRE ENNVIE NESSE FORMATO: {cpf, numero_telefone, nome}
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         // Verificando se está logado
@@ -38,7 +39,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
     }
     catch (error) {
         console.log(error)
-        return Response.json({ "message": error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe COEPS." }, { status: 500 })
+        return Response.json({ "message": error.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe CIEPS." }, { status: 500 })
     }
 
 

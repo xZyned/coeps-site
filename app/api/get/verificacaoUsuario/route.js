@@ -1,9 +1,9 @@
 import { connectToDatabase } from '../../../lib/mongodb'
 import { NextResponse } from 'next/server';
-import { getAccessToken } from '@auth0/nextjs-auth0';
+import { getAccessToken } from '@/lib/auth0-compat';
 import { ObjectId } from 'mongodb';
-import { getSession } from '@auth0/nextjs-auth0';
-import { withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession } from '@/lib/auth0-compat';
+import { withApiAuthRequired } from '@/lib/auth0-compat';
 //
 //
 // Exemplo de return:
@@ -17,6 +17,7 @@ export const GET = withApiAuthRequired( async function GET(request, response) {
     return Response.request({"ola":"mund"})
 });
   */
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, response) {
     try {
         //

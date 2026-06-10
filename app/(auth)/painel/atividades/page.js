@@ -431,7 +431,7 @@ const BannerAtividade = ({ activity, userId, color }) => {
                     {
                         includesUser && !activity.isFree ?
                             <div className="atividades-remove-button-container">
-                                <button className="atividades-remove-button" onClick={() => { setModalMessage("Para cancelar sua inscrição de um evento PAGO, entre em contato com a equipe COEPS.") }}>
+                                <button className="atividades-remove-button" onClick={() => { setModalMessage("Para cancelar sua inscrição de um evento PAGO, entre em contato com a equipe CIEPS.") }}>
                                     <XCircle size={24} />
                                 </button>
                             </div> : ""

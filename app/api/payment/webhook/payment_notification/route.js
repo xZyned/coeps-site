@@ -1,6 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
 import { Collection, ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb';
+import { IPayment } from "../../../../lib/types/payments/paymentTicket.t"
 //
 //
 /**
@@ -91,6 +91,25 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
   const { db } = await connectToDatabase()
   const collection = 'usuarios'
 
+  // Vamos verificar incialmente se há uma referencia externa que faça sentido. Se sim, o pagamento veio de uma sessao
+  // O formato é: "${userId}-ticket-session"
+  const match = requestData.payment.externalReference?.match(
+    /^([a-fA-F0-9]{24})-ticket-session$/
+  );
+
+  if (match && ObjectId.isValid(match[1])) {
+    // Temos um ticket válido.
+    // Vamos validar o pagamento
+    // Isso daqui é apenas para pagamento de Ticket em modo automático
+    const userId = new ObjectId(match[1]);
+    var result = await db.collection(collection).updateOne({
+      _id: userId
+    }, {
+      "pagamento.situacao": 1,
+    }, options);
+    return { "message": 'success' }, { status: 200 }
+  }
+  //
   const paymentType = await getPaymentByInvoiceNumber(invoiceNumber, db, collection, id_api)
   // console.log(paymentType)
   if (!paymentType) {
@@ -108,7 +127,7 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
       $set: {
         "pagamento.lista_pagamentos.$[elem].status": requestData.event,
         "pagamento.situacao": 1,
-        "pagamento.tipo_pagamento":"asaas"
+        "pagamento.tipo_pagamento": "asaas"
       },
 
     };
@@ -181,17 +200,17 @@ async function pagamentoVencido(requestData) { // Chame se, somente se, o pagame
       id_api,
       "pagamento.lista_pagamentos.invoiceNumber": invoiceNumber
     };
-    
+
     // Primeiro, obtenha o documento para verificar o valor atual de pagamento.situacao
     const document = await db.collection(collection).findOne(filter);
-    
+
     // Verifique o valor de pagamento.situacao e prepare a atualização apropriada
     let update = {
       $push: {
         "pagamento.lista_pagamentos.$[elem]._webhook": requestData
       }
     };
-    
+
     if (document && document.pagamento && document.pagamento.situacao !== 1) {
       update.$set = {
         "pagamento.lista_pagamentos.$[elem].status": requestData.event,
@@ -202,14 +221,14 @@ async function pagamentoVencido(requestData) { // Chame se, somente se, o pagame
         "pagamento.lista_pagamentos.$[elem].status": requestData.event
       };
     }
-    
+
     const options = {
       arrayFilters: [{ "elem.invoiceNumber": invoiceNumber }]
     };
-    
+
     // Finalmente, execute a atualização com a condição
     const result = await db.collection(collection).updateOne(filter, update, options);
-    
+
 
     try {
 

@@ -1,9 +1,9 @@
 import { connectToDatabase } from '../../../lib/mongodb'
 import { NextResponse } from 'next/server';
-import { getAccessToken, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getAccessToken, withApiAuthRequired } from '@/lib/auth0-compat';
 import { execOnce } from 'next/dist/shared/lib/utils';
 import { ObjectId } from 'mongodb';
-import { getSession } from '@auth0/nextjs-auth0';
+import { getSession } from '@/lib/auth0-compat';
 //
 //
 // Exemplo de return:
@@ -13,6 +13,7 @@ import { getSession } from '@auth0/nextjs-auth0';
 
 export const dynamic = 'force-dynamic'
 
+/** @type {any} */
 export const GET = withApiAuthRequired(async function GET(request, { params }) {
     try {
         const { user } = await getSession();

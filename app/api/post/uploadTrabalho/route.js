@@ -1,13 +1,14 @@
 // pages/api/upload.js
 import { GridFSBucket } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb';
-import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 
 export const runtime = 'nodejs'; // Mude para 'nodejs' para evitar o Edge Runtime
 
 // Variáveis Globais
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
+/** @type {any} */
 export const POST = withApiAuthRequired(async function POST(request) {
     try {
         const { user } = await getSession(request);
@@ -37,7 +38,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
 
     } catch (err) {
         console.error(err);
-        return Response.json({ message: err.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe COEPS."}, { status: err.status || 500 });
+        return Response.json({ message: err.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe CIEPS."}, { status: err.status || 500 });
     }
 });
 

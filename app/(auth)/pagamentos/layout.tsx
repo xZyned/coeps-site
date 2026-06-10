@@ -1,4 +1,4 @@
-import { UserProvider } from '@auth0/nextjs-auth0/client';
+import { UserProvider } from '@/lib/auth0-client';
 //
 //
 export default function Layout({ children }) {
