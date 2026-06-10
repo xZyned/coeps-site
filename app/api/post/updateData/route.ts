@@ -46,6 +46,14 @@ export const POST = withApiAuthRequired(async function POST(request) {
                     'observations': userId,
                     'notificationDisabled': true,
                     "externalReference": userId,
+                    // NOVO
+                    phone: data.phone,
+                    address: data.address,
+                    addressNumber: data.addressNumber,
+                    complement: data.complement,
+                    province: data.province,
+                    postalCode: data.postalCode,
+                    city: data.city
                 })
             }
             //
@@ -112,6 +120,15 @@ export const POST = withApiAuthRequired(async function POST(request) {
                 'observations': userId,
                 'notificationDisabled': true,
                 "externalReference": userId,
+                // NOVO
+                phone: data.phone,
+                address: data.address,
+                addressNumber: data.addressNumber,
+                complement: data.complement,
+                province: data.province,
+                postalCode: data.postalCode,
+                city: data.city
+
             })
         }
         //
