@@ -119,7 +119,7 @@ export async function POST(request: Request) {
         const modeloFetchAssas = {
             "billingTypes": "PIX",
             "minutesToExpire": 14,
-            "chargeTypes": "DETACHED",
+            "chargeTypes": ["DETACHED"],
             "externalReference": `${userId}-ticket-session`,
             "callback": {
                 "successUrl": ASAAS_URL_CALLBACK,
