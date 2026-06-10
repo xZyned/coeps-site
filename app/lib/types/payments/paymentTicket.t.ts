@@ -6,7 +6,7 @@ export default interface PaymentTicketProps {
     _id: ObjectId;
     orderId: ObjectId;
     owner: ObjectId;
-    pixCode: string;
+    pixCode: string | null;
     userProps: {
         name: string,
         cpf: number,
