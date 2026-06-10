@@ -3,6 +3,7 @@ import { ObjectId } from 'bson';
 import { getUserId } from '@/lib/getUserId';
 import { connectToDatabase } from '@/lib/mongodb';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
+import { ILoteAutomatico } from '@/lib/types/payments/payment.t';
 
 /**
  * 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
         const now = new Date();
 
         // 2. Tenta encontrar uma sessão válida (que ainda não expirou)
-        const sessaoAtiva = await db.collection('pagamentos.sessoes').findOne({
+        const sessaoAtiva: PaymentTicketProps | null = await db.collection('pagamentos.sessoes').findOne({
             owner: new ObjectId(userId),
             type: "ticket",
             expiresAt: { $gt: now } // O segredo está aqui: expiresAt maior que o momento atual
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
 
         const pagamentosRealizadosESessoesAbertas = sessoesAtivas + numeroInscritosPagantes;
         // Calculando lote
-        let loteAtual = null;
+        let loteAtual: ILoteAutomatico | null = null;
         const lotes = ticketConfig.configuracaoLotesAutomaticos?.lotes;
         if (lotes && lotes.length > 0) {
             let vagasAcumuladas = 0;
@@ -101,13 +102,66 @@ export async function POST(request: Request) {
         const expiresAt = new Date(now.getTime() + 15 * 60 * 1000);
 
         // Integração com Gateway (Mock)
-        const mockPixCode = `00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-426655440000_mock_gerado_${now.getTime()}`;
+        // Criando o pagamento PIX:
+        const asaasApiUrl = process.env.ASAAS_API_URL
+        const ASAAS_API_KEY = process.env.ASAAS_API_KEY
+        const ASAAS_URL_CALLBACK = process.env.ASAAS_URL_CALLBACK
+        const ASAAS_URL_REDIRECT = process.env.ASAAS_URL_REDIRECT
+
+        const modeloFetchAssas = {
+            "billingTypes": "PIX",
+            "minutesToExpire": 14,
+            "chargeTypes": "DETACHED",
+            "externalReference": `${userId}-ticket`,
+            "callback": {
+                "successUrl": ASAAS_URL_CALLBACK,
+                "cancelUrl": ASAAS_URL_REDIRECT,
+                "expiredUrl": ASAAS_URL_CALLBACK
+            },
+            "items": [
+                {
+                    "description": loteAtual.nome,
+                    "name": loteAtual.nome,
+                    "quantity": 1,
+                    "value": loteAtual.precos.valorPix
+                }
+            ],
+            "customerData": {
+                "name": sessaoAtiva.userProps.name,
+                "cpfCnpj": sessaoAtiva.userProps.cpf,
+                "email": sessaoAtiva.userProps.email,
+                "phone": sessaoAtiva.userProps.phone,
+                "address": sessaoAtiva.userProps.street,
+                "addressNumber": sessaoAtiva.userProps.number,
+                "complement": sessaoAtiva.userProps.complement,
+                "province": sessaoAtiva.userProps.neighborhood,
+                "postalCode": sessaoAtiva.userProps.zipCode,
+            }
+        }
+        const fetchCheckoutPIX = await fetch(`${asaasApiUrl}/checkouts`, {
+            method: "POST",
+            headers: {
+                'User-Agent': 'NomeDaSuaAplicacao/1.0.0', // Nome do seu app
+                'accept': 'application/json',
+                'content-type': 'application/json',
+                'access_token': ASAAS_API_KEY
+            },
+            body: JSON.stringify(modeloFetchAssas)
+        })
+
+        if (!fetchCheckoutPIX.ok) {
+            return Response.json({ message: "Infelizmente ocorreu algum erro inesperado. Recarregue a página e tente novamente." }, { status: 500 })
+        }
+        const checkoutPix: { link: string } = await fetchCheckoutPIX.json() // tem mais informações, mas é só isso que importa.
+
+
+        //
 
         // Monta o objeto da sessão
         const novaSessao: Omit<PaymentTicketProps, "_id"> = {
             orderId: new ObjectId(),
             owner: new ObjectId(userId),
-            pixCode: mockPixCode,
+            pixCode: checkoutPix.link,
             paymentConfig: loteAtual,
             paymentUrl: "www.google.com.br",
             type: "ticket",

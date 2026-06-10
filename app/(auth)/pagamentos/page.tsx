@@ -1,5 +1,6 @@
 ///////
 'use client'
+import PagamentosManual from './paginaPagamentoAntigo';
 import 'react-credit-cards-2/dist/es/styles-compiled.css';
 import { useUser } from "@/lib/auth0-client"
 import { useState, useEffect } from "react"
@@ -232,6 +233,9 @@ const Pagamentos = () => {
                     ) :
                         <NotPayedYet dataPaymentConfig={dataPaymentConfig} hydratePage={hidratarPágina} />
                 )
+            }
+            {
+                dataPaymentConfig.modo == "manual" && <PagamentosManual />
             }
         </div >
     );

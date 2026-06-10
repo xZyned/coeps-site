@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import './style.css';
 
-const Pagamentos = () => {
+const PagamentosManual = () => {
   const { user, isLoading } = useUser();
   const route = useRouter();
   const [isLoadingFetch, setIsLoadingFetch] = useState<boolean>(false);
@@ -1185,5 +1185,5 @@ const CardPagamentos = ({ eventId, type, data_formatada, invoiceNumber, status, 
 }
 
 
-export default Pagamentos;
+export default PagamentosManual;
 
