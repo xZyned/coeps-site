@@ -4,118 +4,29 @@ import PagamentosManual from './paginaPagamentoAntigo';
 import 'react-credit-cards-2/dist/es/styles-compiled.css';
 import { useUser } from "@/lib/auth0-client"
 import { useState, useEffect } from "react"
-import { useRouter } from 'next/navigation';
 import Link from "next/link";
-import HeaderPainel from "@/components/HeaderPainel";
 import Cards from 'react-credit-cards-2';
 import { ILecture } from '@/lib/types/events/event.t';
 import { IUser } from "@/app/lib/types/user/user.t"
-import { ILoteAutomatico, IPaymentConfig } from '@/lib/types/payments/payment.t';
+import { IPaymentConfig } from '@/lib/types/payments/payment.t';
 import TermModal, { ModalProps } from '@/components/TermModal';
 import {
     Loader2,
-    CreditCard,
     CheckCircle,
     AlertCircle,
-    ShoppingCart,
     ArrowRight,
-    Landmark,
-    FileText,
-    Sparkles,
-    BarChart3,
-    Clock
 } from 'lucide-react';
 import './style.css';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
 
 const Pagamentos = () => {
     const { user, isLoading } = useUser();
-    const route = useRouter();
-    const [isLoadingFetch, setIsLoadingFetch] = useState<boolean>(false);
     const [isLoadingPaymentData, setIsLoadingPaymentData] = useState<boolean>(true);
     const [dataPaymentConfig, setDataPaymentConfig] = useState<IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } | undefined>(undefined);
-    const [isModalError, setIsModalError] = useState<string | false>(false);
-    const [data, setData] = useState<{ pagamento: IUser["pagamento"] }>(undefined);
     const [isFetchingData, setIsFetchingData] = useState<boolean>(true);
-    const [isModalPayment, setModalPayment] = useState<boolean>(false);
-
-    const handleData = (event: any) => {
-        setData(event);
-    };
-
     const handleIsFetchingData = (event: boolean) => {
         setIsFetchingData(event);
     };
-
-    const handleIsModalError = (event: string | false) => {
-        setIsModalError(event);
-    };
-
-    const handleIsLoadingFetch = (event: boolean) => {
-        setIsLoadingFetch(event);
-    };
-
-    const handlePostClick = async (paymentType: string) => {
-        setDataModalProps((prev) => ({
-            ...prev,
-            isOpen: true,
-            onConfirm: async () => {
-                handleIsLoadingFetch(true);
-                setDataModalProps((prev) => ({ ...prev, isOpen: false }))
-                try {
-                    const data = {
-                        typePayment: paymentType
-                    };
-                    const response = await fetch('/api/payment/create_payment', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data),
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Falha ao enviar a requisição POST');
-                    }
-
-                    const responseData: { link: string } = await response.json();
-                    route.push(responseData.link);
-                } catch (error) {
-                    console.error('Erro ao enviar a requisição POST:', error);
-                    handleIsLoadingFetch(false);
-                    handleIsModalError("Ocorreu algum erro. Tente novamente mais tarde.");
-                }
-            }
-        }))
-
-    };
-
-    const handlePostClick2 = async () => {
-        handleIsLoadingFetch(true);
-        try {
-            if (!data || !data.pagamento.lista_pagamentos || data?.pagamento?.lista_pagamentos?.length === 0) {
-                console.log("ERROR: !Data || !data.lista_pagamentos");
-            }
-            const statusFiltro = ["PENDING"];
-            const filtroLinks = data.pagamento.lista_pagamentos.filter(item => statusFiltro.includes(item.status)).map(item => item.invoiceUrl)[0];
-            console.log(data.pagamento)
-            return
-            handleIsLoadingFetch(false);
-            route.push(filtroLinks);
-        } catch (error) {
-            console.log("ERROR: CATCH HANDLEPOSTCLICK2");
-            console.log(error);
-            handleIsLoadingFetch(false);
-        }
-    };
-
-    const [dataModalProps, setDataModalProps] = useState<ModalProps>({
-        isOpen: false,
-        onClose: () => {
-            setDataModalProps((prev) => ({ ...prev, isOpen: false }))
-        },
-        onConfirm: () => { }
-    })
 
     useEffect(() => {
         const enviarRequisicaoGet = async () => {
@@ -136,7 +47,6 @@ const Pagamentos = () => {
                 console.log('Resposta da requisição GET:', responseData);
 
                 handleIsFetchingData(false);
-                handleData(responseData.data);
             } catch (error) {
                 console.error('Erro ao enviar a requisição GET:', error);
             }
@@ -249,7 +159,7 @@ function PaymentSessionActive({
     dataPayment: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps },
     hydratePage: () => void
 }) {
-    const [paymentConfig, setPaymentConfig] = useState<IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps }>(dataPayment)
+    const [paymentConfig, {/*setPaymentConfig*/ }] = useState<IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps }>(dataPayment)
     const [tempoRestante, setTempoRestante] = useState<string>("Calculando...");
     const [textError, setTextError] = useState<string | false>(false);
     const [paymentType, setpaymentType] = useState<"PIX" | "CREDIT_CARD" | "NONE">("NONE");

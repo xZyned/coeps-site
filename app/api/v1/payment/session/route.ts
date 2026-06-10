@@ -4,6 +4,7 @@ import { getUserId } from '@/lib/getUserId';
 import { connectToDatabase } from '@/lib/mongodb';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
 import { ILoteAutomatico } from '@/lib/types/payments/payment.t';
+import { IUser } from '@/lib/types/user/user.t';
 
 /**
  * 
@@ -13,6 +14,13 @@ export async function POST(request: Request) {
     try {
         const userId = await getUserId(request);
         const { db } = await connectToDatabase();
+
+        // Procurando usuário
+        const usuario: IUser | null = await db.collection("usuarios").findOne({
+            "_id": new ObjectId(userId)
+        });
+
+        //
 
         // --- NOVO: Extraindo e validando os dados enviados pelo Frontend ---
         const body = await request.json();
@@ -61,7 +69,7 @@ export async function POST(request: Request) {
             "pagamento.tipo_pagamento": { $not: /^organizador$/i }
         });
 
-        const sessoesAtivas = await db.collection("pagamentos.sessoes").countDocuments({
+        const sessoesAtivas: number = await db.collection("pagamentos.sessoes").countDocuments({
             // Traz apenas os documentos onde o 'expiresAt' é MAIOR que 'now'
             expiresAt: { $gt: now },
             status: "PENDENTE" // Evita contar quem já pagou dentro dos 15 minutos
@@ -127,15 +135,15 @@ export async function POST(request: Request) {
                 }
             ],
             "customerData": {
-                "name": sessaoAtiva.userProps.name,
-                "cpfCnpj": sessaoAtiva.userProps.cpf,
-                "email": sessaoAtiva.userProps.email,
-                "phone": sessaoAtiva.userProps.phone,
-                "address": sessaoAtiva.userProps.street,
-                "addressNumber": sessaoAtiva.userProps.number,
-                "complement": sessaoAtiva.userProps.complement,
-                "province": sessaoAtiva.userProps.neighborhood,
-                "postalCode": sessaoAtiva.userProps.zipCode,
+                "name": nome,
+                "cpfCnpj": cpf,
+                "email": email,
+                "phone": telefone,
+                "address": bairro,
+                "addressNumber": numero,
+                "complement": complemento || "",
+                "province": usuario.informacoes_usuario.país,
+                "postalCode": cep,
             }
         }
         const fetchCheckoutPIX = await fetch(`${asaasApiUrl}/checkouts`, {
