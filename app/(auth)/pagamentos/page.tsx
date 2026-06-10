@@ -230,7 +230,7 @@ const Pagamentos = () => {
                 (
                     dataPaymentConfig.sessaoPagamentoAutomáticoAtiva !== false ? (
                         // @ts-expect-error: Apenas erro de tipificação.
-                        <PaymentSessionActive dataPaymentConfig={dataPaymentConfig} hydratePage={hidratarPágina} />
+                        <PaymentSessionActive dataPayment={dataPaymentConfig} hydratePage={hidratarPágina} />
                     ) :
                         <NotPayedYet dataPaymentConfig={dataPaymentConfig} hydratePage={hidratarPágina} />
                 )
@@ -243,20 +243,22 @@ const Pagamentos = () => {
 };
 //
 function PaymentSessionActive({
-    dataPaymentConfig,
+    dataPayment,
     hydratePage
 }: {
-    dataPaymentConfig: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps },
+    dataPayment: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps },
     hydratePage: () => void
 }) {
+    const [paymentConfig, setPaymentConfig] = useState<IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps }>(dataPayment)
     const [tempoRestante, setTempoRestante] = useState<string>("Calculando...");
     const [textError, setTextError] = useState<string | false>(false);
     const [paymentType, setpaymentType] = useState<"PIX" | "CREDIT_CARD" | "NONE">("NONE");
 
-    const lote = dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.paymentConfig;
+    const lote = paymentConfig.sessaoPagamentoAutomáticoAtiva.paymentConfig;
 
     useEffect(() => {
-        const dataExpiracao = new Date(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.expiresAt).getTime();
+        console.log(paymentConfig.sessaoPagamentoAutomáticoAtiva.status)
+        const dataExpiracao = new Date(paymentConfig.sessaoPagamentoAutomáticoAtiva.expiresAt).getTime();
 
         const timer = setInterval(() => {
             const agora = new Date().getTime();
@@ -278,11 +280,26 @@ function PaymentSessionActive({
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.expiresAt, hydratePage]);
+    }, [paymentConfig.sessaoPagamentoAutomáticoAtiva.expiresAt, hydratePage]);
+
+    if (paymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PENDING") {
+        return (
+            <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
+                <h1>Seu pagamento está sendo processado</h1>
+                <h1>Aguarde.</h1>
+            </div>
+        )
+    }
+    if (paymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PAID") {
+        return (
+            <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
+                <h1>Você já realizou o pagamento!</h1>
+            </div>
+        )
+    }
 
     return (
         <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
-
             {/* MODAL DE ERRO */}
             {textError && (
                 <ModalError
@@ -360,7 +377,7 @@ function PaymentSessionActive({
 
                         <div className='flex flex-col items-center justify-center p-8 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl gap-4'>
                             {
-                                dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.pixCode != null ?
+                                paymentConfig.sessaoPagamentoAutomáticoAtiva.pixCode != null ?
                                     <div>
                                         <p className='text-slate-600 font-medium text-center'>Escaneie o QR Code ou copie o código PIX</p>
                                         <div className='w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 font-bold'>
@@ -379,7 +396,7 @@ function PaymentSessionActive({
                                         <button
                                             className='border-1 border-black'
                                             onClick={() => {
-                                                window.open(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.paymentUrl, "_blank");
+                                                window.open(paymentConfig.sessaoPagamentoAutomáticoAtiva.paymentUrl, "_blank");
                                             }}
                                         >Ir para pagamento</button>
                                     </div>
@@ -390,7 +407,7 @@ function PaymentSessionActive({
                     <PaymentForm
                         isModalOpen={paymentType === "CREDIT_CARD"}
                         onClose={() => setpaymentType("NONE")}
-                        dataPaymentConfig={dataPaymentConfig}
+                        dataPaymentConfig={paymentConfig}
                         hydratePage={hydratePage}
                     />
                 </div>
