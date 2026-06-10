@@ -161,12 +161,13 @@ export async function POST(request: Request) {
         const novaSessao: Omit<PaymentTicketProps, "_id"> = {
             orderId: new ObjectId(),
             owner: new ObjectId(userId),
-            pixCode: checkoutPix.link,
+            pixCode: null,
             paymentConfig: loteAtual,
-            paymentUrl: "www.google.com.br",
+            paymentUrl: checkoutPix.link,
             type: "ticket",
             expiresAt: expiresAt,
             // --- NOVO: Adicionando os dados validados à nova sessão ---
+            status: "UNPAID",
             userProps: {
                 name: nome,
                 cpf: cpf,
