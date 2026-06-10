@@ -112,7 +112,7 @@ export async function POST(request: Request) {
             "billingTypes": "PIX",
             "minutesToExpire": 14,
             "chargeTypes": "DETACHED",
-            "externalReference": `${userId}-ticket`,
+            "externalReference": `${userId}-ticket-session`,
             "callback": {
                 "successUrl": ASAAS_URL_CALLBACK,
                 "cancelUrl": ASAAS_URL_REDIRECT,

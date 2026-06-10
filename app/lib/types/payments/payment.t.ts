@@ -49,8 +49,8 @@ export interface IPayment {
     "lista_pagamentos": {
         "object": string,
         "id": string, // exemplo => "pay_e4qzehxllm4ep78p" NAO É OBJECT ID
-        "dateCreated": "2024-09-10",
-        "customer": "cus_000006200822",
+        "dateCreated": string, // 2024-09-10
+        "customer": string, // cus_000006200822
         "paymentLink": string | null,
         "value": number,
         "netValue": number,
