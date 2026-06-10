@@ -87,9 +87,8 @@ export const POST = withApiAuthRequired(async function POST(request) {
         if (!pagamentoSelecionado) {
             return Response.json({ erro: "Pagamento não encontrado." }, { status: 404 });
         }
-
-        console.log(dataPayment)
-
+        //
+        //
         //
         const options = {
             method: 'POST',
