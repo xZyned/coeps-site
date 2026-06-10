@@ -1,5 +1,5 @@
-///////
 'use client'
+
 import PagamentosManual from './paginaPagamentoAntigo';
 import 'react-credit-cards-2/dist/es/styles-compiled.css';
 import { useUser } from "@/lib/auth0-client"
@@ -162,7 +162,7 @@ const Pagamentos = () => {
                     throw new Error('Falha ao enviar a requisição GET');
                 }
 
-                const responseData: IPaymentConfig = await response.json();
+                const responseData: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } = await response.json();
                 setDataPaymentConfig(responseData);
             } catch (error) {
                 console.error('Erro ao enviar a requisição GET:', error);
@@ -187,7 +187,7 @@ const Pagamentos = () => {
                     throw new Error('Falha ao enviar a requisição GET');
                 }
 
-                const responseData: IPaymentConfig = await response.json();
+                const responseData: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } = await response.json();
                 setDataPaymentConfig(responseData);
             } catch (error) {
                 console.error('Erro ao enviar a requisição GET:', error);
@@ -209,7 +209,7 @@ const Pagamentos = () => {
                 throw new Error('Falha ao enviar a requisição GET');
             }
 
-            const responseData: IPaymentConfig = await response.json();
+            const responseData: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } = await response.json();
             setDataPaymentConfig(responseData);
         } catch (error) {
             console.error('Erro ao enviar a requisição GET:', error);
@@ -229,6 +229,7 @@ const Pagamentos = () => {
                 dataPaymentConfig.modo == "automatico" &&
                 (
                     dataPaymentConfig.sessaoPagamentoAutomáticoAtiva !== false ? (
+                        // @ts-expect-error: Apenas erro de tipificação.
                         <PaymentSessionActive dataPaymentConfig={dataPaymentConfig} hydratePage={hidratarPágina} />
                     ) :
                         <NotPayedYet dataPaymentConfig={dataPaymentConfig} hydratePage={hidratarPágina} />
