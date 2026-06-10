@@ -1,5 +1,4 @@
 import { ObjectId } from 'mongodb';
-import QRCode from 'qrcode';
 import { withApiAuthRequired, getSession } from '@/lib/auth0-compat';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { NextResponse } from 'next/server';
