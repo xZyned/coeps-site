@@ -137,6 +137,7 @@ export async function POST(request: Request) {
                     "value": loteAtual.precos.valorPix
                 }
             ],
+            /*
             "customerData": {
                 "name": nome,
                 "cpfCnpj": cpf,
@@ -148,6 +149,7 @@ export async function POST(request: Request) {
                 "province": usuario.informacoes_usuario.país,
                 "postalCode": cep,
             }
+                */
         }
         const fetchCheckoutPIX = await fetch(`${asaasApiUrl}/checkouts`, {
             method: "POST",
