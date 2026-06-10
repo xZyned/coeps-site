@@ -1,6 +1,6 @@
 import { Collection, ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb';
-
+import { IPayment } from "../../../../lib/types/payments/paymentTicket.t"
 //
 //
 /**
@@ -97,103 +97,108 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
     // Temos um ticket válido.
     // Vamos validar o pagamento
     // Isso daqui é apenas para pagamento de Ticket em modo automático
-    const findSession = await db.collection("pagamentos.sessoes").findOne({
-      _id: ObjectId.isValid(requestData.payment.externalReference)
+    const sessionId = new ObjectId(requestData.payment.externalReference)
+
+    const sessionPayment = await db.collection("pagamentos.sessoes").findOne({
+      _id: sessionId
     })
-    if (!findSession) {
-      return { "message": "Session not found" }, { status: 404 }
+
+
+    if (!sessionPayment) {
+      return { "message": 'SessionPayment not found' }, { status: 404 }
     }
-    await db.collection("usuarios").updateOne({
-      _id: new ObjectId(findSession.owner)
-    }, {
-      "pagamentos.situacao": 1
-    })
-    await db.collection("pagamentos.comprovantes").insertOne({
-      _id: ObjectId.isValid(requestData.payment.externalReference),
-      owner: new ObjectId(findSession.owner),
-      title: "EM BREVE!"
-    })
+
+    if (sessionPayment.type === "ticket") {
+      var result = await db.collection(collection).updateOne({
+        _id: new ObjectId(sessionPayment.owner)
+      }, {
+        "pagamento.situacao": 1,
+      }, options);
+      await db.collection("pagamentos.sessoes").updateOne({
+        _id: sessionId
+      }, { status: "PAID" })
+      await db.collection("pagamentos.comprovantes").updateOne({
+        _id: sessionId,
+        owner: new ObjectId(sessionPayment.owner),
+        title:"EM BREVE!"
+      }, { status: "PAID" })
+
+
+      return { "message": 'success' }, { status: 200 }
+    } else {
+      return { "message": 'Esse tipo de pagamento por Sessão ainda não foi configurado' }, { status: 500 }
+    }
+  }
+  //
+  const paymentType = await getPaymentByInvoiceNumber(invoiceNumber, db, collection, id_api)
+  // console.log(paymentType)
+  if (!paymentType) {
+    return { "message": '!paymentType' }, { status: 200 }
+  }//ticket | activity
+  if (paymentType == "ticket") {
+    const filter = {
+      id_api,
+      "pagamento.lista_pagamentos.invoiceNumber": invoiceNumber
+    };
+    const update = {
+      $push: {
+        "pagamento.lista_pagamentos.$[elem]._webhook": requestData
+      },
+      $set: {
+        "pagamento.lista_pagamentos.$[elem].status": requestData.event,
+        "pagamento.situacao": 1,
+        "pagamento.tipo_pagamento": "asaas"
+      },
+
+    };
+    const options = {
+      arrayFilters: [{ "elem.invoiceNumber": invoiceNumber }]
+    };
+    var result = await db.collection(collection).updateOne(filter, update, options);
+    if (result.matchedCount === 0) { //Nenhum documento correspondeu ao filtro.
+      //console.log("result.matchedCount === 0")
+      return Response.json({ "erro": "result.matchedCount - pagamentoRecebido()" }, { status: 200 })
+    }
+    else if (result.modifiedCount === 0) { // Nenhum documento foi modificado.
+      //console.log("result.modifiedCount === 0")
+      return Response.json({ "erro": "result.modifiedCount === 0 - pagamentoRecebido()" }, { status: 200 })
+    }
+    return { "message": 'success' }, { status: 200 }
 
   }
-  return { "message": 'success' }, { status: 200 }
+  if (paymentType == "activity") {
+    const filter = {
+      id_api,
+      "pagamento.lista_pagamentos.invoiceNumber": invoiceNumber
+    };
+    const update = {
+      $push: {
+        "pagamento.lista_pagamentos.$[elem]._webhook": requestData
+      },
+      $set: {
+        "pagamento.lista_pagamentos.$[elem].status": requestData.event,
+      },
+
+    };
+    const options = {
+      arrayFilters: [{ "elem.invoiceNumber": invoiceNumber }]
+    };
+    var result = await db.collection(collection).updateOne(filter, update, options);
+    if (result.matchedCount === 0) { //Nenhum documento correspondeu ao filtro.
+      //console.log("result.matchedCount === 0")
+      return Response.json({ "erro": "result.matchedCount - pagamentoRecebido()" }, { status: 200 })
+    }
+    else if (result.modifiedCount === 0) { // Nenhum documento foi modificado.
+      //console.log("result.modifiedCount === 0")
+      return Response.json({ "erro": "result.modifiedCount === 0 - pagamentoRecebido()" }, { status: 200 })
+    }
+    return { "message": 'success' }, { status: 200 }
+
+  }
+  // Dando baixa no DB.
+  return { "message": '!paymentType configured' }, { status: 200 }
+
 }
-const userId = new ObjectId(requestData.payment.externalReference);
-var result = await db.collection(collection).updateOne({
-  _id: userId
-}, {
-  "pagamento.situacao": 1,
-}, options);
-return { "message": 'success' }, { status: 200 }
-
-//
-const paymentType = await getPaymentByInvoiceNumber(invoiceNumber, db, collection, id_api)
-// console.log(paymentType)
-if (!paymentType) {
-  return { "message": '!paymentType' }, { status: 200 }
-}//ticket | activity
-if (paymentType == "ticket") {
-  const filter = {
-    id_api,
-    "pagamento.lista_pagamentos.invoiceNumber": invoiceNumber
-  };
-  const update = {
-    $push: {
-      "pagamento.lista_pagamentos.$[elem]._webhook": requestData
-    },
-    $set: {
-      "pagamento.lista_pagamentos.$[elem].status": requestData.event,
-      "pagamento.situacao": 1,
-      "pagamento.tipo_pagamento": "asaas"
-    },
-
-  };
-  const options = {
-    arrayFilters: [{ "elem.invoiceNumber": invoiceNumber }]
-  };
-  var result = await db.collection(collection).updateOne(filter, update, options);
-  if (result.matchedCount === 0) { //Nenhum documento correspondeu ao filtro.
-    //console.log("result.matchedCount === 0")
-    return Response.json({ "erro": "result.matchedCount - pagamentoRecebido()" }, { status: 200 })
-  }
-  else if (result.modifiedCount === 0) { // Nenhum documento foi modificado.
-    //console.log("result.modifiedCount === 0")
-    return Response.json({ "erro": "result.modifiedCount === 0 - pagamentoRecebido()" }, { status: 200 })
-  }
-  return { "message": 'success' }, { status: 200 }
-
-}
-if (paymentType == "activity") {
-  const filter = {
-    id_api,
-    "pagamento.lista_pagamentos.invoiceNumber": invoiceNumber
-  };
-  const update = {
-    $push: {
-      "pagamento.lista_pagamentos.$[elem]._webhook": requestData
-    },
-    $set: {
-      "pagamento.lista_pagamentos.$[elem].status": requestData.event,
-    },
-
-  };
-  const options = {
-    arrayFilters: [{ "elem.invoiceNumber": invoiceNumber }]
-  };
-  var result = await db.collection(collection).updateOne(filter, update, options);
-  if (result.matchedCount === 0) { //Nenhum documento correspondeu ao filtro.
-    //console.log("result.matchedCount === 0")
-    return Response.json({ "erro": "result.matchedCount - pagamentoRecebido()" }, { status: 200 })
-  }
-  else if (result.modifiedCount === 0) { // Nenhum documento foi modificado.
-    //console.log("result.modifiedCount === 0")
-    return Response.json({ "erro": "result.modifiedCount === 0 - pagamentoRecebido()" }, { status: 200 })
-  }
-  return { "message": 'success' }, { status: 200 }
-
-}
-// Dando baixa no DB.
-return { "message": '!paymentType configured' }, { status: 200 }
-
 
 // Ele dá baixa falando que está vencido e assim, permitindo o usuário fazer outro pagamento.
 async function pagamentoVencido(requestData) { // Chame se, somente se, o pagamento estiver OVERDUE.

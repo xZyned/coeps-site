@@ -116,13 +116,13 @@ export async function POST(request: Request) {
         const ASAAS_URL_CALLBACK = process.env.ASAAS_URL_CALLBACK
         const ASAAS_URL_REDIRECT = process.env.ASAAS_URL_REDIRECT
 
-        const sessionId = new ObjectId()
+        const newSessionId = new ObjectId()
 
         const modeloFetchAssas = {
             "billingTypes": ["PIX"],
             "minutesToExpire": 14,
             "chargeTypes": ["DETACHED"],
-            "externalReference": `${sessionId}`,
+            "externalReference": `${newSessionId}`,
             "callback": {
                 "successUrl": ASAAS_URL_CALLBACK,
                 "cancelUrl": ASAAS_URL_REDIRECT,
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
 
         // Monta o objeto da sessão
         const novaSessao: PaymentTicketProps = {
-            _id: sessionId,
+            _id: newSessionId,
             orderId: new ObjectId(),
             owner: new ObjectId(userId),
             pixCode: null,
