@@ -90,19 +90,18 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
   const invoiceNumber = requestData.payment.invoiceNumber
   const { db } = await connectToDatabase()
   const collection = 'usuarios'
+  // Procurando a sessão de pagamento
 
-  // Vamos verificar incialmente se há uma referencia externa que faça sentido. Se sim, o pagamento veio de uma sessao
-  // O formato é: "${userId}-ticket-session"
-  if (ObjectId.isValid(requestData.payment.externalReference)) {
+  // Por enquanto, todos os pagamentos são do ticket são feitos por sessão,
+  // Então tudo que vier para cá é exclusivamente sessão. O restante é por criação de 'Invoice'
+  if (requestData.payment.checkoutSession) {
     // Temos um ticket válido.
     // Vamos validar o pagamento
     // Isso daqui é apenas para pagamento de Ticket em modo automático
-    const sessionId = new ObjectId(requestData.payment.externalReference)
 
     const sessionPayment = await db.collection("pagamentos.sessoes").findOne({
-      _id: sessionId
+      orderId: requestData.payment.checkoutSession
     })
-
 
     if (!sessionPayment) {
       return { "message": 'SessionPayment not found' }, { status: 404 }
@@ -115,12 +114,12 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
         "pagamento.situacao": 1,
       }, options);
       await db.collection("pagamentos.sessoes").updateOne({
-        _id: sessionId
+        _id: new ObjectId(sessionPayment._id)
       }, { status: "PAID" })
-      await db.collection("pagamentos.comprovantes").updateOne({
-        _id: sessionId,
+      await db.collection("pagamentos.comprovantes").insertOne({
         owner: new ObjectId(sessionPayment.owner),
-        title:"EM BREVE!"
+        type: "ticket",
+        title: "EM BREVE!"
       }, { status: "PAID" })
 
 

@@ -4,7 +4,7 @@ import { ILoteAutomatico } from './payment.t';
 //
 export default interface PaymentTicketProps {
     _id: ObjectId;
-    orderId: ObjectId;
+    orderId: string;
     owner: ObjectId;
     pixCode: string | null;
     userProps: {

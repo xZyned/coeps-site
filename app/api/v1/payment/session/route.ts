@@ -121,6 +121,7 @@ export async function POST(request: Request) {
         const modeloFetchAssas = {
             "billingTypes": ["PIX"],
             "minutesToExpire": 14,
+            "customer": usuario.id_api,
             "chargeTypes": ["DETACHED"],
             "externalReference": `${newSessionId}`,
             "callback": {
@@ -162,7 +163,7 @@ export async function POST(request: Request) {
         if (!fetchCheckoutPIX.ok) {
             return Response.json({ message: "Infelizmente ocorreu algum erro inesperado. Recarregue a página e tente novamente." }, { status: 500 })
         }
-        const checkoutPix: { link: string } = await fetchCheckoutPIX.json() // tem mais informações, mas é só isso que importa.
+        const checkoutPix: { link: string, id: string } = await fetchCheckoutPIX.json() // tem mais informações, mas é só isso que importa.
 
 
         //
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
         // Monta o objeto da sessão
         const novaSessao: PaymentTicketProps = {
             _id: newSessionId,
-            orderId: new ObjectId(),
+            orderId: checkoutPix.id,
             owner: new ObjectId(userId),
             pixCode: null,
             paymentConfig: loteAtual,
