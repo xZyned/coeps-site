@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import './style.css';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
+import Header from '@/components/Header';
 
 const Pagamentos = () => {
     const { user, isLoading } = useUser();
@@ -134,6 +135,7 @@ const Pagamentos = () => {
 
     return (
         <div>
+            <Header />
             {/* ---> ESSA TELA É EXCLUSIVAMENTE PARA OS PAGAMENTOS AUTOMATICOS <--- */}
             {
                 dataPaymentConfig.modo == "automatico" &&
