@@ -12,7 +12,6 @@ import { IPayment } from "../../../../lib/types/payments/paymentTicket.t"
 //
 export async function POST(request, response) {
   //console.log("============== payment_notification_urls ================")
-  const PAGBANK_API_KEY = process.env.PAGBANK_API_KEY
   try {
     const requestData = await request.json()
     switch (true) {
@@ -102,25 +101,27 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
     const sessionPayment = await db.collection("pagamentos.sessoes").findOne({
       orderId: requestData.payment.checkoutSession
     })
-
     if (!sessionPayment) {
       return { "message": 'SessionPayment not found' }, { status: 404 }
     }
 
     if (sessionPayment.type === "ticket") {
       var result = await db.collection(collection).updateOne({
-        _id: new ObjectId(sessionPayment.owner)
+        _id: sessionPayment.owner
       }, {
-        "pagamento.situacao": 1,
-      }, options);
+        $set: {
+          "pagamento.situacao": 1,
+        }
+      });
+      console.log("cheguei!!!")
       await db.collection("pagamentos.sessoes").updateOne({
         _id: new ObjectId(sessionPayment._id)
-      }, { status: "PAID" })
+      }, { $set: { status: "PAID" } })
       await db.collection("pagamentos.comprovantes").insertOne({
         owner: new ObjectId(sessionPayment.owner),
         type: "ticket",
         title: "EM BREVE!"
-      }, { status: "PAID" })
+      }, { $set: { status: "PAID" } })
 
 
       return { "message": 'success' }, { status: 200 }

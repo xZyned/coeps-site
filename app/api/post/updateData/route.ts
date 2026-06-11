@@ -11,6 +11,8 @@ export const POST = withApiAuthRequired(async function POST(request) {
     try {
         // Puxando informações
         const { user } = await getSession();
+        console.log(user)
+        
         const userId = user.sub.replace("auth0|", ""); // Retirando o auth0|  
 
         if (!userId) {
@@ -21,7 +23,6 @@ export const POST = withApiAuthRequired(async function POST(request) {
         const ASAAS_API_URL = process.env.ASAAS_API_URL + "/customers"
 
         const data = await request.json()
-        console.log(data)
 
         const { db } = await connectToDatabase();
 
@@ -53,7 +54,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
                     complement: data.complement,
                     province: data.province,
                     postalCode: data.postalCode,
-                    city: data.city
+                    city: data.cidade_nome
                 })
             }
             //
@@ -78,7 +79,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
                     cpf: data.cpf,
                     numero_telefone: data.numero_telefone,
                     nome: data.nome,
-                    email: data.email,
+                    email: user.email,
                     data_criacao: new Date(),
                     titulo_honorario: '',
                     país: data.pais,
@@ -127,7 +128,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
                 complement: data.complement,
                 province: data.province,
                 postalCode: data.postalCode,
-                city: data.city
+                city: data.cidade_nome
 
             })
         }
@@ -142,7 +143,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
             cpf: data.cpf,
             numero_telefone: data.numero_telefone,
             nome: data.nome,
-            email: data.email,
+            email: user.email,
             data_criacao: userDb.informacoes_usuario.data_criacao,
             titulo_honorario: '',
             país: data.pais,
