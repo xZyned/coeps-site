@@ -78,7 +78,7 @@ export default function MinhaProgramacao() {
             Aqui está o seu cronograma de eventos! Todos os eventos obrigatórios e aqueles em que você se inscreveu estão organizados para que você
             não fique perdido. Não se esqueça de se inscrever nos minicursos!
             <span className="programacao-highlight">
-              Clicando nos cards, você consegue mais informações sobre o evento presente na sua agenda.
+              Clique nos cartões para ver mais informações sobre os eventos da sua agenda.
             </span>
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function MinhaProgramacao() {
             </h3>
             <ul className="programacao-aviso-list">
               <li>Serão realizadas no dia 14/11, no corredor do CEU.</li>
-              <li>O autor principal ou coautor deverá expor o pôster em todo o período das 16 horas até às 18 horas.</li>
+              <li>O autor principal ou coautor deverá expor o pôster durante todo o período, das 16h às 18h.</li>
             </ul>
           </div>
 

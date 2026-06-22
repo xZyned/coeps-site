@@ -51,24 +51,24 @@ export default function Trabalhos() {
     <main className="trabalhos-page">
       <section className="trabalhos-hero">
         <div>
-          <span className="cieps-kicker">Trabalhos cientificos</span>
+          <span className="cieps-kicker">Trabalhos científicos</span>
           <h1 className="cieps-display">Pesquisa com rosto, contexto e alcance internacional.</h1>
           <p>
-            O VIII CIEPS recebe producoes academicas voltadas a saude, educacao e
-            cuidado. A 1ª Edicao Internacional amplia a conversa sem perder o rigor
+            O I CIEPS recebe produções acadêmicas voltadas à saúde, à educação e ao
+            cuidado. A 1ª Edição Internacional amplia a conversa sem perder o rigor
             e a clareza do processo.
           </p>
         </div>
 
         <aside className="trabalhos-hero-card cieps-surface">
           <Sparkles size={22} />
-          <strong>{config?.isOpen ? 'Submissoes abertas' : 'Edital em acompanhamento'}</strong>
+          <strong>{config?.isOpen ? 'Submissões abertas' : 'Edital em acompanhamento'}</strong>
           <span>
             {loading
               ? 'Verificando o status atual.'
               : config?.isOpen
                 ? 'Envie seu trabalho e acompanhe os prazos.'
-                : 'A pagina permanece pronta para novas atualizacoes.'}
+                : 'A página permanece pronta para novas atualizações.'}
           </span>
         </aside>
       </section>
@@ -79,46 +79,46 @@ export default function Trabalhos() {
           {loading ? (
             <div className="trabalhos-inline-state">
               <Loader2 className="spin" size={18} />
-              <strong>Carregando informacoes</strong>
+              <strong>Carregando informações</strong>
             </div>
           ) : (
-            <strong>{config?.isOpen ? 'Submissoes abertas' : 'Submissoes encerradas'}</strong>
+            <strong>{config?.isOpen ? 'Submissões abertas' : 'Submissões encerradas'}</strong>
           )}
           <p>
             {error
-              ? 'Nao foi possivel carregar todos os detalhes agora.'
+              ? 'Não foi possível carregar todos os detalhes agora.'
               : config?.isOpen
                 ? 'Consulte edital, guia e painel do participante para enviar.'
-                : 'Os resultados e proximas chamadas seguem publicados nesta pagina.'}
+                : 'Os resultados e as próximas chamadas seguem publicados nesta página.'}
           </p>
         </article>
 
         <article className="cieps-surface trabalhos-date-card">
           <CalendarDays size={20} />
           <strong>{formatShortDate(config?.data_limite_submissao)}</strong>
-          <span>Prazo de submissao</span>
+          <span>Prazo de submissão</span>
         </article>
 
         <article className="cieps-surface trabalhos-date-card">
           <CalendarDays size={20} />
           <strong>{formatShortDate(config?.data_publicacao_resultados)}</strong>
-          <span>Publicacao de resultados</span>
+          <span>Publicação de resultados</span>
         </article>
       </section>
 
       <section className="trabalhos-content-grid">
         <article className="cieps-surface trabalhos-copy-card">
-          <span className="cieps-kicker">Convite academico</span>
+          <span className="cieps-kicker">Convite acadêmico</span>
           <h2 className="cieps-display">Um congresso que transforma leitura em autoria.</h2>
           <p>
-            O Diretório Acadêmico Diogo Guimarães, junto ao IMEPAC Araguari, estrutura
-            o VIII Congresso Internacional de Estudantes e Profissionais da Saúde para
+            O Diretório Acadêmico Diogo Guimarães, junto ao IMEPAC Araguari, organiza
+            o I Congresso Internacional de Estudantes e Profissionais da Saúde para
             receber estudos inéditos e relevantes. O foco é abrir espaço para trabalhos
-            que contribuam com uma prática mais humana, crítica e conectada ao presente.
+            que contribuam para uma prática mais humana, crítica e conectada ao presente.
           </p>
           <p>
             O processo de submissão permanece centralizado no painel do congressista,
-            com materiais de apoio publicados nesta página sempre que disponíveis.
+            com materiais de apoio publicados nesta página sempre que estiverem disponíveis.
           </p>
 
           {config?.isOpen && (
@@ -145,14 +145,14 @@ export default function Trabalhos() {
 
         <article className="cieps-surface trabalhos-publicacoes">
           <div className="trabalhos-section-heading">
-            <span className="cieps-kicker">Publicacoes</span>
+            <span className="cieps-kicker">Publicações</span>
             <h2 className="cieps-display">Resultados e documentos liberados.</h2>
           </div>
 
           {loading ? (
             <div className="trabalhos-inline-state">
               <Loader2 className="spin" size={18} />
-              <strong>Carregando publicacoes</strong>
+              <strong>Carregando publicações</strong>
             </div>
           ) : config?.resultados?.length ? (
             <div className="trabalhos-publication-list">
@@ -165,7 +165,7 @@ export default function Trabalhos() {
               ))}
             </div>
           ) : (
-            <p>As publicacoes oficiais serao exibidas aqui assim que forem disponibilizadas.</p>
+            <p>As publicações oficiais serão exibidas aqui assim que forem disponibilizadas.</p>
           )}
 
           <Link href="/anais" className="trabalhos-more-link">

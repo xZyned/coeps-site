@@ -72,14 +72,14 @@ export default function Home() {
                             !trabalhosConfigs.isOpen ?
                                 <div>
                                     <h1>A publicação de trabalhos está fechada, e ainda não temos uma data definida para a abertura.</h1>
-                                    <p>Não se preocupe, fique ligado em nossas redes sociais, para novas novidades!</p>
+                                    <p>Acompanhe nossas redes sociais para receber novidades.</p>
                                 </div>
                                 :
                                 isTodayBetweenDates(trabalhosConfigs.data_inicio_submissao, trabalhosConfigs.data_limite_submissao) ?
                                     <div>
                                         <h1>O período de submissão de trabalhos está aberto!</h1>
                                         <div className='datas-container'>
-                                            <h1>Não Perca as Datas!</h1>
+                                            <h1>Não perca as datas!</h1>
                                             <div className='datas-grid'>
                                                 <div className='data-item'>
                                                     <p>Início</p>
@@ -91,7 +91,7 @@ export default function Home() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <button className='btn-submeter' onClick={() => router.push(`/painel/trabalhos/enviarTrabalho`)}>Submeter trabalho!</button>
+                                        <button className='btn-submeter' onClick={() => router.push(`/painel/trabalhos/enviarTrabalho`)}>Submeter trabalho</button>
                                     </div>
                                     :
                                     <div>
@@ -109,7 +109,7 @@ export default function Home() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className='btn-correcao'>Não se preocupe! Caso você tenha feito algum submissão, você pode acompanha-las abaixo!</p>
+                                        <p className='btn-correcao'>Caso você tenha feito alguma submissão, poderá acompanhá-la abaixo.</p>
                                     </div>
                         }
                     </div>

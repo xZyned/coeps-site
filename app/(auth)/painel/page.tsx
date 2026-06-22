@@ -47,11 +47,11 @@ export default function Page() {
     <main className="cieps-dashboard">
       <section className="cieps-dashboard-hero">
         <div>
-          <span className="cieps-kicker">Area do congressista</span>
-          <h1 className="cieps-display">Bem-vindo ao VIII CIEPS.</h1>
+          <span className="cieps-kicker">Área do congressista</span>
+          <h1 className="cieps-display">Bem-vindo ao I CIEPS.</h1>
           <p>
-            A 1ª Edicao Internacional organiza toda a sua jornada em um painel
-            mais direto: inscricao, submissao, agenda e acesso ao evento.
+            A 1ª Edição Internacional organiza toda a sua jornada em um painel
+            mais direto: inscrição, submissão, agenda e acesso ao evento.
           </p>
         </div>
         <Image
@@ -66,8 +66,8 @@ export default function Page() {
       <section className="cieps-dashboard-grid">
         <article className="cieps-dashboard-panel cieps-dashboard-panel-wide">
           <div className="cieps-panel-heading">
-            <span className="cieps-kicker">Acoes principais</span>
-            <h2 className="cieps-display">O essencial da sua participacao.</h2>
+            <span className="cieps-kicker">Ações principais</span>
+            <h2 className="cieps-display">O essencial da sua participação.</h2>
           </div>
           <div className="cieps-dashboard-actions">
             {quickActions.map((action) => (
@@ -85,7 +85,7 @@ export default function Page() {
             <h2 className="cieps-display">Seu QR Code em um toque.</h2>
           </div>
           <p>
-            Use o codigo individual para facilitar seu check-in e consultar sua
+            Use o código individual para facilitar seu check-in e consultar sua
             credencial quando precisar.
           </p>
           <Link
@@ -101,11 +101,11 @@ export default function Page() {
         <article className="cieps-dashboard-panel">
           <div className="cieps-panel-heading">
             <span className="cieps-kicker">Acompanhamento</span>
-            <h2 className="cieps-display">Submissoes e comprovante.</h2>
+            <h2 className="cieps-display">Submissões e comprovante.</h2>
           </div>
           <p>
             Acompanhe o status dos trabalhos enviados e consulte o comprovante
-            de inscricao sempre que precisar.
+            de inscrição sempre que precisar.
           </p>
           <div className="cieps-dashboard-inline-links">
             <Link href="/painel/trabalhos" prefetch={false}>

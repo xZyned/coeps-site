@@ -68,7 +68,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
 
         const valor = 180
         const data_vencimento = new Date().toISOString().split("T")[0] // retorna o dia de hoje.
-        const descricao = 'Primeiro lote para entrada no VIII CIEPS.'
+        const descricao = 'Primeiro lote de inscrição no I CIEPS.'
         const desconto = 0
 
 

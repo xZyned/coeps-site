@@ -58,40 +58,40 @@ export default function UpdateData() {
             switch (true) { // NAME
                 case (value_name.trim() == ""):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Nome Completo"`)
+                    handleChangeAvisoErro('Preencha o campo “Nome completo”.')
                     return 0
 
                 case (value_name.trim().length <= 4):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Nome Completo" com mais de 4 caracteres`)
+                    handleChangeAvisoErro('Preencha o campo “Nome completo” com mais de quatro caracteres.')
                     return 0
             }
             switch (true) { // Número de Telefone
                 case (!/^\d+$/.test(value_telefone.trim())):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Número de telefone" com apenas números`)
+                    handleChangeAvisoErro('Preencha o campo “Número de telefone” apenas com números.')
                     return 0
                 case (value_telefone.trim() == ""):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Número de telefone"`)
+                    handleChangeAvisoErro('Preencha o campo “Número de telefone”.')
                     return 0
                 case (value_telefone.trim().length <= 4):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Número de telefone" com mais de 4 caracteres`)
+                    handleChangeAvisoErro('Preencha o campo “Número de telefone” com mais de quatro caracteres.')
                     return 0
             }
             switch (true) { // Cpf
                 case (!/^\d+$/.test(value_cpf.trim())):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Cpf" com apenas números`)
+                    handleChangeAvisoErro('Preencha o campo “CPF” apenas com números.')
                     return 0
                 case (value_cpf.trim() == ""):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Cpf"`)
+                    handleChangeAvisoErro('Preencha o campo “CPF”.')
                     return 0
                 case (value_cpf.trim().length <= 4):
                     handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o campo "Cpf" com mais de 4 caracteres`)
+                    handleChangeAvisoErro('Preencha o campo “CPF” com mais de quatro caracteres.')
                     return 0
             }
             //
@@ -143,7 +143,7 @@ export default function UpdateData() {
                         <h1 className="font-semibold text-black text-[30px] lg:text-[30px] font-coeps">PRIMEIROS PASSOS</h1>
                     </div>
                     <div>
-                        <p className="text-slate-950 text-center">Antes de continuar, precisamos de algumas informações para concluir seu cadastro. Não se preocupe, vai ser rapidinho!</p>
+                        <p className="text-slate-950 text-center">Antes de continuar, precisamos de algumas informações para concluir seu cadastro. Não se preocupe: será rápido.</p>
                     </div>
                     <div className="flex flex-col space-y-6  pt-4">
                         <div className="flex flex-col space-y-1">
@@ -167,7 +167,7 @@ export default function UpdateData() {
                             </div>
                         </div>
                         <div className="flex flex-col space-y-1">
-                            <h1 className="text-slate-950">Cpf</h1>
+                            <h1 className="text-slate-950">CPF</h1>
                             <div className="flex-1">
                                 <InputComponent
                                     type_text="number"

@@ -224,7 +224,7 @@ const Pagamentos = () => {
                 <div className='flex flex-col items-center content-center justify-center space-x-5 glass-container space-y-5'>
                   <div className="history-container">
                     <h2 className="history-title">PAGAMENTO EM ABERTO</h2>
-                    <h4 className="payment-info-title w-full text-center">Você possui pagamentos em aberto. Você pode pagar qualquer um deles OU gerar um novo pagamento</h4>
+                    <h4 className="payment-info-title w-full text-center">Você possui pagamentos em aberto. Pode pagar qualquer um deles ou gerar um novo pagamento.</h4>
                   </div>
                   <div className='flex flex-col items-center justify-center space-y-5 md:space-y-0 md:flex-row md:space-x-5'>
                     {
@@ -255,7 +255,7 @@ const Pagamentos = () => {
                   </div>
                   <div className="history-container">
                     <h2 className="history-title">GERAR OUTRO TIPO DE PAGAMENTO</h2>
-                    <h4 className="payment-info-title w-full text-center">Se quiser, pode abrir um novo pagamento</h4>
+                    <h4 className="payment-info-title w-full text-center">Se quiser, você pode gerar um novo pagamento.</h4>
                     <div className='flex flex-col items-center justify-center space-y-5 md:space-y-0 md:flex-row md:space-x-5'>
                       {
                         dataPaymentConfig.pagamentosAceitos.filter((value) => !data.pagamento.lista_pagamentos.filter(item => ["PENDING"].includes(item.status)).map((value) => value.billingType).includes(value)).map((pagamento) =>
@@ -358,7 +358,7 @@ const Pagamentos = () => {
                     <div className="payment-info-icon"><Clock size={24} /></div>
                     <div className="payment-info-content">
                       <h4 className="payment-info-title">Prazo de Pagamento</h4>
-                      <p className="payment-info-text">Você terá 1 dia útil para realizar o pagamento após criar um novo pagamento (PIX, BOLETO ou CRÉDITO À VISTA).</p>
+                      <p className="payment-info-text">Você terá um dia útil para realizar o pagamento após gerar uma nova cobrança (PIX, boleto ou crédito à vista).</p>
                     </div>
                   </div>
 
@@ -941,7 +941,7 @@ const PaymentForm = ({ isModalOpen, onClose }: { isModalOpen: boolean; onClose: 
                                 </p>
                               </div>
                               <h1>
-                                Quero realizar o pagamento em <span className='font-bold'>{value.totalParcelas} parcelas de R${value.valorCadaParcela.toFixed(2)}</span>, totalizando <span className='font-bold'>R${(value.valorCadaParcela * value.totalParcelas).toFixed(2)}</span>.
+                                Quero realizar o pagamento em <span className='font-bold'>{value.totalParcelas} parcelas de R$ {value.valorCadaParcela.toFixed(2)}</span>, totalizando <span className='font-bold'>R$ {(value.valorCadaParcela * value.totalParcelas).toFixed(2)}</span>.
                               </h1>
                             </div>
                           )

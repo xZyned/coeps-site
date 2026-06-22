@@ -51,12 +51,12 @@ export default function Anais() {
     <main className="anais-page">
       <section className="anais-hero">
         <div>
-          <span className="cieps-kicker">Memoria cientifica</span>
+          <span className="cieps-kicker">Memória científica</span>
           <h1 className="cieps-display">Anais do CIEPS, organizados para consulta clara.</h1>
           <p>
             Esta área reúne as publicações do congresso em um formato mais direto,
             preservando a produção científica das edições anteriores e preparando
-            o caminho para o VIII CIEPS.
+            o caminho para o I CIEPS.
           </p>
         </div>
         <Image
@@ -71,20 +71,24 @@ export default function Anais() {
         {loading ? (
           <>
             <Loader2 className="spin" size={20} />
-            <strong>Carregando publicacoes</strong>
-            <span>Preparando os volumes disponiveis.</span>
+            <strong>Carregando publicações</strong>
+            <span>Preparando os volumes disponíveis.</span>
           </>
         ) : anais.length > 0 ? (
           <>
             <BookOpen size={20} />
-            <strong>{anais.length} publicacao{anais.length === 1 ? '' : 'es'} disponivel{anais.length === 1 ? '' : 'is'}</strong>
+            <strong>
+              {anais.length === 1
+                ? '1 publicação disponível'
+                : `${anais.length} publicações disponíveis`}
+            </strong>
             <span>Abra um volume para acessar o arquivo oficial.</span>
           </>
         ) : (
           <>
             <FileText size={20} />
-            <strong>Novos anais ainda nao publicados</strong>
-            <span>Assim que houver liberacao, os arquivos aparecerao aqui.</span>
+            <strong>Novos anais ainda não publicados</strong>
+            <span>Assim que houver liberação, os arquivos aparecerão aqui.</span>
           </>
         )}
       </section>
@@ -105,7 +109,7 @@ export default function Anais() {
                 <strong>{item.name}</strong>
                 <span>{new Date(item.date_update).getFullYear()}</span>
                 <small>
-                  Abrir publicacao
+                  Abrir publicação
                   <ExternalLink size={14} />
                 </small>
               </div>
@@ -114,7 +118,7 @@ export default function Anais() {
         ) : (
           <article className="anais-empty cieps-surface">
             <span className="cieps-kicker">Em breve</span>
-            <h2 className="cieps-display">Os proximos volumes entram aqui quando forem liberados.</h2>
+            <h2 className="cieps-display">Os próximos volumes estarão disponíveis aqui quando forem liberados.</h2>
             <p>Enquanto isso, consulte os comunicados oficiais do congresso para acompanhar novidades.</p>
           </article>
         )}

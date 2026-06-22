@@ -462,13 +462,13 @@ function SubmissionForm() {
 
   //
   if (!trabalhosProps) {
-    return <h1 className='periodo-fechado'>Carregando Propriedades Trabalhos</h1>
+    return <h1 className='periodo-fechado'>Carregando configurações de trabalhos...</h1>
   }
   if (!trabalhosProps.isOpen || !isTodayBetweenDates(trabalhosProps.data_inicio_submissao, trabalhosProps.data_limite_submissao)) {
     return (
       <div className='periodo-fechado'>
-        <h1>O período de publicação foi já terminou.</h1>
-        <p>Caso tenha realizado alguma submissão, você pode acompanha-la em {`"Consultar Submissões"`}</p>
+        <h1>O período de submissão já foi encerrado.</h1>
+        <p>Caso tenha realizado alguma submissão, você pode acompanhá-la em {`"Consultar Submissões"`}.</p>
       </div>
     )
   }
@@ -631,7 +631,7 @@ function SubmissionForm() {
                 <Plus size={16} className="mr-2" />
                 {arquivos.length === 0 ? 'Selecionar arquivos' : 'Adicionar mais arquivos'}
               </button>
-              <p className="upload-info">PDF, DOC ou DOCX até {modalidade.limite_maximo_de_postagem / 1024 / 1024}MB cada</p>
+              <p className="upload-info">PDF, DOC ou DOCX de até {modalidade.limite_maximo_de_postagem / 1024 / 1024} MB cada</p>
               <p className="upload-count">
                 {arquivos.length}/{modalidade.postagens_maximas} arquivos selecionados
               </p>
@@ -722,7 +722,7 @@ function SubmissionForm() {
               className="adicionar-autor-btn"
             >
               <UserPlus size={16} className="mr-1" />
-              Adicionar Autor
+              Adicionar autor
             </button>
           </div>
 

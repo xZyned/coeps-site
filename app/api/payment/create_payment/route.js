@@ -82,7 +82,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
         // valor = resultPagamento[0].valorAVista => o safado do bug aqui
 
         const data_vencimento = new Date().toISOString().split("T")[0] // retorna o dia de hoje.
-        const descricao = resultPagamento[0].nome// 'Primeiro lote para entrada no VIII CIEPS.'
+        const descricao = resultPagamento[0].nome// 'Primeiro lote de inscrição no I CIEPS.'
         const desconto = 0
 
         const options = {
