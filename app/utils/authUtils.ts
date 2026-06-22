@@ -32,7 +32,7 @@ export async function checkAll(req: NextRequest, res) {
     try {
         const session = await getSession(req, res)
         const { accessToken } = await getAccessToken(req, res);
-        const requestUrlPath = new URL(req.url).pathname
+        const requestUrlPath = req.nextUrl.pathname
         //
         const urlFetch = new URL("/api/get/verificacaoUsuario", req.url)
         const response = await fetch(urlFetch.toString(), {
@@ -46,22 +46,35 @@ export async function checkAll(req: NextRequest, res) {
         // A primeira verificação é a isPos_registration depois o pagamento.
         //
         if (responseJson.isPos_registration != true) { // se a situação for == 1 voce seta.
+            if (requestUrlPath.startsWith("/updateData")) {
+                return undefined
+            }
             const urlUpdateData = new URL("/updateData", req.url)
             return urlUpdateData
             //return NextResponse.rewrite(urlUpdateData);
         }
         if (responseJson.pagamento.situacao != 1 && !requestUrlPath.includes("/painel/certificados")) { // se a situação for == 1 voce seta.
+            if (requestUrlPath.startsWith("/pagamentos")) {
+                return undefined
+            }
             const urlPagamentos = new URL("/pagamentos", req.url)
             return urlPagamentos
             //return NextResponse.rewrite(urlPagamentos);
         }
         if (responseJson.pagamento.situacao_animacao == false && responseJson.pagamento.situacao == 1) {
+            if (requestUrlPath.startsWith("/suaInscricaoFoiConfirmada")) {
+                return undefined
+            }
             const urlPagamentos = new URL("/suaInscricaoFoiConfirmada", req.url)
             return urlPagamentos
         }
         if (req.nextUrl.pathname.startsWith('/suaInscricaoFoiConfirmada') && responseJson.pagamento.situacao_animacao == true) {
             const urlPagamentos = new URL("/painel", req.url)
             return urlPagamentos
+        }
+        if (requestUrlPath.startsWith("/updateData")) {
+            const urlPainel = new URL("/painel", req.url)
+            return urlPainel
         }
         return undefined
 

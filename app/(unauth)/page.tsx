@@ -41,7 +41,7 @@ export default function Home() {
       <section className="landing-hero">
         <div className="landing-hero-copy">
           <span className="cieps-kicker">A virada de 2026</span>
-          <h1 className="cieps-display">VIII CIEPS</h1>
+          <h1 className="cieps-display">I CIEPS</h1>
           <p className="landing-hero-edition">1ª Edição Internacional</p>
           <div className="cieps-lines" aria-hidden="true" />
           <p className="landing-hero-description">
@@ -63,7 +63,7 @@ export default function Home() {
             <Image
               src="/cieps/cieps-landing-panel.png"
               unoptimized={true}
-              alt="Arte panoramica do VIII CIEPS com a ponte ferroviaria de Araguari"
+              alt="Arte panoramica do I CIEPS com a ponte ferroviaria de Araguari"
               fill
             />
           </div>
@@ -85,7 +85,7 @@ export default function Home() {
             Um congresso que cresce sem perder o lugar de onde nasceu.
           </h2>
           <p>
-            O VIII CIEPS preserva a historia construida em Araguari e estreia sua
+            O I CIEPS preserva a historia construida em Araguari e estreia sua
             1ª Edição Internacional com uma identidade mais forte, institucional e
             aberta ao futuro da saude.
           </p>

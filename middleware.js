@@ -29,6 +29,16 @@ function normalizeRedirectUrl(req, target) {
   return url;
 }
 
+function redirectUnlessCurrent(req, target, response) {
+  const url = normalizeRedirectUrl(req, target);
+
+  if (url.pathname === req.nextUrl.pathname && url.search === req.nextUrl.search) {
+    return response;
+  }
+
+  return NextResponse.redirect(url);
+}
+
 export async function middleware(req) {
   if (!isAuth0Configured) {
     if (req.nextUrl.pathname.startsWith('/auth') || isProtectedRoute(req.nextUrl.pathname)) {
@@ -61,18 +71,21 @@ export async function middleware(req) {
 
   let check = await checkAndRefreshToken(req, authRes);
   if (check) {
-    return NextResponse.redirect(normalizeRedirectUrl(req, check));
+    return redirectUnlessCurrent(req, check, authRes);
   }
 
   check = await checkAll(req, authRes);
   if (check) {
-    return NextResponse.redirect(normalizeRedirectUrl(req, check));
+    return redirectUnlessCurrent(req, check, authRes);
   }
 
-  if (!req.nextUrl.pathname.startsWith('/pagamentos')) {
+  if (
+    !req.nextUrl.pathname.startsWith('/pagamentos') &&
+    !req.nextUrl.pathname.startsWith('/updateData')
+  ) {
     check = await checkRoutes(req, authRes);
     if (check) {
-      return NextResponse.redirect(normalizeRedirectUrl(req, check));
+      return redirectUnlessCurrent(req, check, authRes);
     }
   }
 
