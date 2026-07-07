@@ -12,7 +12,18 @@ module.exports = {
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      colors: {
+        papel: '#F4F1EA',
+        tinta: '#1A1A1A',
+        goles: '#A32D2D',
+        araguari: '#185FA5',
+        ipe: '#EF9F27',
+        muted: '#73706B',
+        linha: '#DED9CF',
+      },
       fontFamily: {
+        'title': ['Lora', 'Georgia', 'Times New Roman', 'serif'],
+        'sans': ['"DM Sans"', 'Arial', 'Helvetica Neue', 'Helvetica', 'sans-serif'],
         'emoji': ['Segoe UI Emoji', 'sans-serif'],
         'coeps': ['Georgia', 'Times New Roman', 'serif'],
         'cieps-display': ['Georgia', 'Times New Roman', 'serif'],

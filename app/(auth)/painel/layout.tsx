@@ -1,5 +1,6 @@
 
 import HeaderPainel from '@/app/components/HeaderPainel';
+import './style.css';
 //
 //
 export default function Layout({ children }) {
