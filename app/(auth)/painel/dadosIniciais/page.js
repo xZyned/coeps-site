@@ -88,10 +88,6 @@ export default function UpdateData() {
                     handleChangeSetIsLoadingForms(0)
                     handleChangeAvisoErro(`Preencha o campo "Nome Completo" com mais de 4 caracteres`)
                     return 0
-                case (value_email.trim() == "" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value_email)):
-                    handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha um "E-mail" válido`)
-                    return 0
             }
             switch (true) { // TELEFONE
                 case (!/^\d+$/.test(value_telefone.trim())):
@@ -130,10 +126,6 @@ export default function UpdateData() {
                     handleChangeSetIsLoadingForms(0)
                     handleChangeAvisoErro(`Preencha a "Província/Bairro"`)
                     return 0
-                case (value_city.trim() == "" || !/^\d+$/.test(value_city.trim())):
-                    handleChangeSetIsLoadingForms(0)
-                    handleChangeAvisoErro(`Preencha o "Código da Cidade" apenas com números`)
-                    return 0
                 case (value_data_nascimento.trim() == ""):
                     handleChangeSetIsLoadingForms(0)
                     handleChangeAvisoErro(`Preencha o campo "Data de Nascimento"`)
@@ -171,7 +163,6 @@ export default function UpdateData() {
                 body: JSON.stringify({
                     "name": value_name,
                     "cpfCnpj": value_cpf,
-                    "email": value_email,
                     "phone": value_telefone,
                     "address": value_address,
                     "addressNumber": parseInt(value_addressNumber, 10), // Garantindo tipagem int32
@@ -300,10 +291,6 @@ export default function UpdateData() {
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="flex flex-col space-y-1">
-                                    <h1 className="text-sm font-semibold text-slate-700">CEP</h1>
-                                    <InputComponent type_text="number" placeholder="Ex: 3550308" value={value_city} onChange={handleChangeCity} />
-                                </div>
                                 <div className="flex flex-col space-y-1">
                                     <h1 className="text-sm font-semibold text-slate-700">Nome da Cidade</h1>
                                     <InputComponent placeholder="Ex: São Paulo" value={value_cidade_nome} onChange={handleChangeCidadeNome} />
