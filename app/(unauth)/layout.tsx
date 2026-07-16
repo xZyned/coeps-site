@@ -22,11 +22,11 @@ function Footer() {
             src="/cieps/cieps-lockup-horizontal.png"
             width={420}
             height={136}
-            alt="Marca do VIII CIEPS"
+            alt="Marca do I CIEPS"
           />
           <p>
-            VIII CIEPS. A 1ª Edicao Internacional do Congresso Internacional de
-            Estudantes e Profissionais da Saude.
+            I CIEPS. A 1ª Edição Internacional do Congresso Internacional de
+            Estudantes e Profissionais da Saúde.
           </p>
         </div>
 
@@ -50,23 +50,23 @@ function Footer() {
         </div>
 
         <div className="cieps-footer-column">
-          <h2>Acessos rapidos</h2>
-          <Link href="/programacao" prefetch={false}>Programacao</Link>
-          <Link href="/trabalhos" prefetch={false}>Trabalhos cientificos</Link>
+          <h2>Acessos rápidos</h2>
+          <Link href="/programacao" prefetch={false}>Programação</Link>
+          <Link href="/trabalhos" prefetch={false}>Trabalhos científicos</Link>
           <Link href="/anais" prefetch={false}>Anais</Link>
-          <Link href="/painel" prefetch={false}>Area do congressista</Link>
+          <Link href="/painel" prefetch={false}>Área do congressista</Link>
         </div>
 
         <div className="cieps-footer-column cieps-footer-meta">
           <h2>Institucional</h2>
-          <p>Realizacao: DADG</p>
+          <p>Realização: DADG</p>
           <p>Apoio: IMEPAC Araguari e Prefeitura de Araguari</p>
           <p>Araguari, Minas Gerais, Brasil</p>
         </div>
       </div>
       <div className="cieps-footer-bottom">
-        <span>© 2026 VIII CIEPS.</span>
-        <span>1ª Edicao Internacional.</span>
+        <span>© 2026 I CIEPS.</span>
+        <span>1ª Edição Internacional.</span>
       </div>
     </footer>
   );

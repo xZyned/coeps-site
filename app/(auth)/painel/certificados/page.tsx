@@ -10,10 +10,10 @@ export default function Certificados() {
         <div className="certificados-disabled-icon">
           <FileCheck2 size={28} />
         </div>
-        <h1 className="cieps-display">A emissao sera feita em ambiente externo.</h1>
+        <h1 className="cieps-display">A emissão será realizada em ambiente externo.</h1>
         <p>
-          O painel do VIII CIEPS agora fica dedicado a inscricao, trabalhos, agenda,
-          pagamentos e acesso ao evento. As orientacoes sobre certificados serao
+          O painel do I CIEPS agora fica dedicado à inscrição, aos trabalhos, à agenda,
+          aos pagamentos e ao acesso ao evento. As orientações sobre certificados serão
           divulgadas pelos canais oficiais do congresso.
         </p>
         <div className="certificados-disabled-actions">
@@ -23,7 +23,7 @@ export default function Certificados() {
           </Link>
           <Link href="/anais" className="cieps-button">
             <ExternalLink size={18} />
-            Ver informacoes publicas
+            Ver informações públicas
           </Link>
         </div>
       </section>

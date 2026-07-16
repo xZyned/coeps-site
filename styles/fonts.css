@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
 @font-face {
   font-family: 'Segoe UI Emoji';
   src: url('/fonts/segoeui-emoji.ttf') format('truetype');
@@ -13,6 +15,6 @@
 }
 
 :root {
-  --cieps-display: "Georgia", "Times New Roman", serif;
-  --cieps-body: "Arial", "Helvetica Neue", Helvetica, sans-serif;
+  --cieps-display: "Lora", "Georgia", "Times New Roman", serif;
+  --cieps-body: "DM Sans", "Arial", "Helvetica Neue", Helvetica, sans-serif;
 }

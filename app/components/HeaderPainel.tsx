@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { Calendar, CreditCard, FileText, Home, LogOut, Menu, User, X } from 'lucide-react';
 
 const menuItems = [
-  { name: 'Inicio', href: '/', icon: <Home size={16} /> },
-  { name: 'Minha pagina', href: '/painel', icon: <User size={16} /> },
+  { name: 'Início', href: '/', icon: <Home size={16} /> },
+  { name: 'Minha página', href: '/painel', icon: <User size={16} /> },
   { name: 'Trabalhos', href: '/painel/trabalhos', icon: <FileText size={16} /> },
-  { name: 'Programacao', href: '/painel/minhaProgramacao', icon: <Calendar size={16} /> },
+  { name: 'Programação', href: '/painel/minhaProgramacao', icon: <Calendar size={16} /> },
   { name: 'Pagamentos', href: '/pagamentos', icon: <CreditCard size={16} /> },
 ];
 
@@ -32,11 +32,11 @@ export default function HeaderPainel({ isPayed = true }: { isPayed: boolean }) {
             src="/cieps/cieps-lockup-horizontal.png"
             width={420}
             height={136}
-            alt="VIII CIEPS"
+            alt="I CIEPS"
           />
         </Link>
 
-        <nav className="cieps-panel-nav" aria-label="Navegacao do congressista">
+        <nav className="cieps-panel-nav" aria-label="Navegação do congressista">
           {menuItems.map((item) => (
             <Link key={item.name} href={item.href} prefetch={false}>
               {item.icon}

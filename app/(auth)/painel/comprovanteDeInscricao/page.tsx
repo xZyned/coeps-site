@@ -8,10 +8,10 @@ import { Download } from 'lucide-react';
 const documentHtmlTemplate = `
 <div id="document-content" style="padding: 20px; font-family: 'Times New Roman', Times, serif;">
   <div style="text-align: center; margin-bottom: 20px;">
-    <img src="/documento-anexado.png" alt="Logo do VIII CIEPS" style="max-width: 300px; height: auto; display: block; margin: 0 auto;">
+    <img src="/documento-anexado.png" alt="Logo do I CIEPS" style="max-width: 300px; height: auto; display: block; margin: 0 auto;">
   </div>
-  <h1 style="text-align: center; font-size: 24px; margin-bottom: 20px;color: #281802ff;">Comprovante de participação do VIII CIEPS</h1>
-  <p style="font-size: 16px; line-height: 1.6; text-align: justify;color: #281802ff;">Certificamos que o congressista XXX está devidamente registrado para participar do VIII Congresso Internacional de Estudantes e Profissionais da Saúde, realizado em Araguari entre 12/11/2026 e 15/11/2026.</p>
+  <h1 style="text-align: center; font-size: 24px; margin-bottom: 20px;color: #281802ff;">Comprovante de participação no I CIEPS</h1>
+  <p style="font-size: 16px; line-height: 1.6; text-align: justify;color: #281802ff;">Certificamos que o(a) congressista XXX está devidamente inscrito(a) para participar do I Congresso Internacional de Estudantes e Profissionais da Saúde, realizado em Araguari, de 12 a 15 de novembro de 2026.</p>
 </div>
 `;
 

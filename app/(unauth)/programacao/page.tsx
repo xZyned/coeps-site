@@ -23,14 +23,14 @@ type OrganizedData = Record<string, ProgramItem[]>;
 
 const scheduleHighlights = [
   { day: '12 NOV', label: 'Abertura oficial' },
-  { day: '13 NOV', label: 'Mesas e conferencias' },
-  { day: '14 NOV', label: 'Minicursos e vivencias' },
-  { day: '15 NOV', label: 'Encerramento e conexoes' },
+  { day: '13 NOV', label: 'Mesas e conferências' },
+  { day: '14 NOV', label: 'Minicursos e vivências' },
+  { day: '15 NOV', label: 'Encerramento e conexões' },
 ];
 
 function organizeData(course: ICourse[], lecture: ILecture[]) {
   return [...course, ...lecture].reduce<OrganizedData>((groups, item) => {
-    const category = item.type || 'Programacao';
+    const category = item.type || 'Programação';
     groups[category] ??= [];
     groups[category].push(item);
     return groups;
@@ -44,11 +44,11 @@ function getCategoryIcon(category: string) {
     return <GraduationCap size={20} />;
   }
 
-  if (normalized.includes('palestra') || normalized.includes('conferencia') || normalized.includes('mesa')) {
+  if (normalized.includes('palestra') || normalized.includes('conferência') || normalized.includes('mesa')) {
     return <Presentation size={20} />;
   }
 
-  if (normalized.includes('atividade') || normalized.includes('vivencia')) {
+  if (normalized.includes('atividade') || normalized.includes('vivência')) {
     return <Sparkles size={20} />;
   }
 
@@ -88,7 +88,7 @@ export default function Programacao() {
           lecture: result.result2 ?? [],
         });
       } catch (error) {
-        console.error('Erro ao buscar programacao:', error);
+        console.error('Erro ao buscar programação:', error);
         setData({ course: [], lecture: [] });
       } finally {
         setLoading(false);
@@ -109,11 +109,11 @@ export default function Programacao() {
     <main className="programacao-page">
       <section className="programacao-hero">
         <div className="programacao-hero-copy">
-          <span className="cieps-kicker">Programacao oficial</span>
-          <h1 className="cieps-display">Quatro dias para viver o VIII CIEPS.</h1>
+          <span className="cieps-kicker">Programação oficial</span>
+          <h1 className="cieps-display">Quatro dias para viver o I CIEPS.</h1>
           <p>
             De 12 a 15 de novembro de 2026, Araguari recebe uma agenda pensada para
-            quem quer estudar, trocar experiencias e acompanhar a 1ª Edicao Internacional
+            quem quer estudar, trocar experiências e acompanhar a 1ª Edição Internacional
             de perto.
           </p>
           <div className="programacao-highlight-grid">
@@ -129,7 +129,7 @@ export default function Programacao() {
         <div className="programacao-hero-media">
           <Image
             src="/cieps/cieps-program-booklet.png"
-            alt="Programa editorial do VIII CIEPS com a identidade visual do congresso"
+            alt="Programa editorial do I CIEPS com a identidade visual do congresso"
             width={960}
             height={720}
             priority
@@ -141,8 +141,8 @@ export default function Programacao() {
         {loading ? (
           <div className="programacao-state">
             <Loader2 className="spin" size={22} />
-            <strong>Carregando programacao</strong>
-            <span>Organizando as atividades disponiveis.</span>
+            <strong>Carregando programação</strong>
+            <span>Organizando as atividades disponíveis.</span>
           </div>
         ) : categories.length > 0 ? (
           <div className="programacao-state">
@@ -153,8 +153,8 @@ export default function Programacao() {
         ) : (
           <div className="programacao-state">
             <Clock3 size={22} />
-            <strong>Cronograma em atualizacao</strong>
-            <span>Os blocos oficiais serao publicados aqui assim que forem liberados.</span>
+            <strong>Cronograma em atualização</strong>
+            <span>Os blocos oficiais serão publicados aqui assim que forem liberados.</span>
           </div>
         )}
       </section>
@@ -223,9 +223,9 @@ export default function Programacao() {
         ) : (
           <div className="programacao-empty cieps-surface">
             <span className="cieps-kicker">Em breve</span>
-            <h2 className="cieps-display">A agenda detalhada aparecera aqui.</h2>
+            <h2 className="cieps-display">A agenda detalhada aparecerá aqui.</h2>
             <p>
-              Enquanto isso, a identidade e o periodo oficial do VIII CIEPS ja estao definidos:
+              Enquanto isso, a identidade e o período oficial do I CIEPS já estão definidos:
               Araguari, 12 a 15 de novembro de 2026.
             </p>
           </div>
@@ -244,7 +244,7 @@ export default function Programacao() {
             <h2 id="programacao-modal-title" className="cieps-display">
               {openItem.name}
             </h2>
-            <p>{openItem.description || 'Descricao oficial em atualizacao.'}</p>
+            <p>{openItem.description || 'Descrição oficial em atualização.'}</p>
 
             <div className="programacao-modal-timeline">
               {openItem.timeline?.map((timeline) => (

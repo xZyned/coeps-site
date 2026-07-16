@@ -75,7 +75,7 @@ export default function Minicursos() {
                 <div className="atividades-intro">
                     <h1>O QUE TEMOS AQUI</h1>
                     <p>
-                        Aqui, você pode se inscrever em <span className="atividades-highlight">atividades complementares</span>. Após a inscrição, a atividade será adicionada automaticamente à <span className="atividades-highlight">Minha Programação</span>. Você consegue ver mais detalhes sobre as atividades <Link prefetch={false} target="_blank" href="/programacao"><span className="atividades-highlight" style={{ cursor: 'pointer' }}>clicando aqui</span></Link>.
+                        Aqui, você pode se inscrever em <span className="atividades-highlight">atividades complementares</span>. Após a inscrição, a atividade será adicionada automaticamente à <span className="atividades-highlight">Minha Programação</span>. Para ver mais detalhes sobre as atividades, <Link prefetch={false} target="_blank" href="/programacao"><span className="atividades-highlight" style={{ cursor: 'pointer' }}>clique aqui</span></Link>.
                     </p>
                 </div>
                 <div className="atividades-intro">
@@ -87,15 +87,15 @@ export default function Minicursos() {
                 <div className="atividades-intro">
                     <h1>QUANTAS ATIVIDADES EU POSSO ME INSCREVER?</h1>
                     <p>
-                        Você pode se inscrever em <span className="atividades-highlight">quantas atividades quiser</span>. Caso queira retirar sua inscrição de algum dos eventos, basta clicar no botão <XCircle size={18} style={{ verticalAlign: 'middle', color: '#EF4444' }} /> presente no canto superior direito dos eventos que você está inscrito. Caso queira retirar sua inscrição de um evento pago, por favor entre em contato com a organização.
+                        Você pode se inscrever em <span className="atividades-highlight">quantas atividades quiser</span>. Caso queira retirar sua inscrição de algum evento, basta clicar no botão <XCircle size={18} style={{ verticalAlign: 'middle', color: '#EF4444' }} /> presente no canto superior direito dos eventos nos quais você está inscrito. Caso queira retirar sua inscrição de um evento pago, entre em contato com a organização.
                     </p>
                 </div>
                 <div className="atividades-intro">
                     <h1>REGRAS DE INSCRIÇÃO</h1>
                     <p style={{ textAlign: 'left' }}>
-                        <CheckCircle size={16} style={{ color: '#1B305F', marginRight: 6, verticalAlign: 'middle' }} /> A soma das inscrições dos minicursos deve ser obrigatoriamente de no mínimo <span className="atividades-highlight">8 horas</span>.<br />
+                        <CheckCircle size={16} style={{ color: '#1B305F', marginRight: 6, verticalAlign: 'middle' }} /> A soma das inscrições dos minicursos deve totalizar, no mínimo, <span className="atividades-highlight">8 horas</span>.<br />
                         <Info size={16} style={{ color: '#1B305F', marginRight: 6, verticalAlign: 'middle' }} /> <b>NÃO</b> são permitidas inscrições em atividades com horários conflitantes. É de responsabilidade do congressista realizar um planejamento prévio antes da abertura das inscrições.<br />
-                        <Calendar size={16} style={{ color: '#1B305F', marginRight: 6, verticalAlign: 'middle' }} /> O congressista tem acesso às datas de abertura das inscrições, horários, localizações e datas de realização das atividades <span className="atividades-highlight"><Link className="bg-red-600 p-1 text-white" href="/programacao" prefetch={false} target="_blank">CLICANDO AQUI</Link></span>.
+                        <Calendar size={16} style={{ color: '#1B305F', marginRight: 6, verticalAlign: 'middle' }} /> O congressista pode consultar as datas de abertura das inscrições, os horários, os locais e as datas de realização das atividades <span className="atividades-highlight"><Link className="bg-red-600 p-1 text-white" href="/programacao" prefetch={false} target="_blank">clicando aqui</Link></span>.
                     </p>
                 </div>
                 <div className="atividades-status">

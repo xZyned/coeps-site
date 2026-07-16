@@ -39,7 +39,7 @@ export default function MeuQRCodePage() {
         <div className="qr-loader">
           <Image
             src="/LetreiroColorido01.png"
-            alt="Logo do VIII CIEPS"
+            alt="Logo do I CIEPS"
             className="qr-loader-logo"
             draggable="false"
           />

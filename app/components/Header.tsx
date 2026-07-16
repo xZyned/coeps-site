@@ -7,9 +7,9 @@ import { Menu, X } from 'lucide-react';
 
 const menuItems = [
   { name: 'Sobre', href: '/#sobre' },
-  { name: 'Programacao', href: '/programacao' },
+  { name: 'Programação', href: '/programacao' },
   { name: 'Trabalhos', href: '/trabalhos' },
-  { name: 'Informacoes', href: '/anais' },
+  { name: 'Informações', href: '/anais' },
   { name: 'Araguari', href: '/#araguari' },
   { name: 'Contato', href: '/#contato' },
 ];
@@ -31,14 +31,14 @@ export default function Header() {
         <Link href="/" prefetch={false} className="cieps-brand">
           <Image
             src="/cieps/cieps-lockup-horizontal.png"
-            alt="VIII CIEPS"
+            alt="I CIEPS"
             width={420}
             height={136}
             priority
           />
         </Link>
 
-        <nav className="cieps-nav" aria-label="Navegacao principal">
+        <nav className="cieps-nav" aria-label="Navegação principal">
           {menuItems.map((item) => (
             <Link key={item.name} href={item.href} prefetch={false}>
               {item.name}
@@ -47,7 +47,7 @@ export default function Header() {
         </nav>
 
         <Link href="/inscricoes" prefetch={false} className="cieps-header-cta">
-          Inscricoes
+          Inscrições
         </Link>
 
         <button
@@ -79,7 +79,7 @@ export default function Header() {
             className="cieps-mobile-cta"
             onClick={() => setMenuAberto(false)}
           >
-            Fazer inscricao
+            Fazer inscrição
           </Link>
         </div>
       )}

@@ -14,7 +14,7 @@ const metrics = [
   {
     icon: Presentation,
     value: '40+',
-    label: 'minicursos praticos',
+    label: 'minicursos práticos',
   },
   {
     icon: Globe2,
@@ -24,15 +24,15 @@ const metrics = [
   {
     icon: BookOpen,
     value: '08',
-    label: 'edicoes de historia',
+    label: 'edições de história',
   },
 ];
 
 const programacao = [
   ['12 nov', 'Abertura oficial', 'Palavra magna e simposios'],
-  ['13 nov', 'Mesas redondas', 'Comunicacoes orais e workshops'],
-  ['14 nov', 'Minicursos', 'Vivencias e sessoes tematicas'],
-  ['15 nov', 'Encerramento', 'Apresentacoes finais e celebracao'],
+  ['13 nov', 'Mesas-redondas', 'Comunicações orais e workshops'],
+  ['14 nov', 'Minicursos', 'Vivências e sessões temáticas'],
+  ['15 nov', 'Encerramento', 'Apresentações finais e celebração'],
 ];
 
 export default function Home() {
@@ -41,19 +41,19 @@ export default function Home() {
       <section className="landing-hero">
         <div className="landing-hero-copy">
           <span className="cieps-kicker">A virada de 2026</span>
-          <h1 className="cieps-display">VIII CIEPS</h1>
+          <h1 className="cieps-display">I CIEPS</h1>
           <p className="landing-hero-edition">1ª Edição Internacional</p>
           <div className="cieps-lines" aria-hidden="true" />
           <p className="landing-hero-description">
-            O maior congresso estudantil de saude da regiao entra em uma nova fase.
-            Tradicao que inspira, ciencia que conecta e experiencias que transformam.
+            O maior congresso estudantil de saúde da região entra em uma nova fase.
+            Tradição que inspira, ciência que conecta e experiências que transformam.
           </p>
           <div className="landing-hero-actions">
             <Link href="/inscricoes" prefetch={false} className="cieps-button">
-              Faca sua inscricao
+              Faça sua inscrição
             </Link>
             <Link href="/programacao" prefetch={false} className="cieps-button-outline">
-              Ver programacao
+              Ver programação
             </Link>
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function Home() {
             <Image
               src="/cieps/cieps-landing-panel.png"
               unoptimized={true}
-              alt="Arte panoramica do VIII CIEPS com a ponte ferroviaria de Araguari"
+              alt="Arte panorâmica do I CIEPS com a ponte ferroviária de Araguari"
               fill
             />
           </div>
@@ -76,7 +76,7 @@ export default function Home() {
             src="/cieps/cieps-prefeitura-sketch-paper.png"
             width={2574}
             height={1632}
-            alt="Ilustracao arquitetonica da Prefeitura de Araguari"
+            alt="Ilustração arquitetônica da Prefeitura de Araguari"
           />
         </div>
         <div className="landing-origin-copy">
@@ -85,14 +85,14 @@ export default function Home() {
             Um congresso que cresce sem perder o lugar de onde nasceu.
           </h2>
           <p>
-            O VIII CIEPS preserva a historia construida em Araguari e estreia sua
+            O I CIEPS preserva a história construída em Araguari e estreia sua
             1ª Edição Internacional com uma identidade mais forte, institucional e
-            aberta ao futuro da saude.
+            aberta ao futuro da saúde.
           </p>
         </div>
         <blockquote>
           “O internacional muda tudo.”
-          <small>Minuta de direcao</small>
+          <small>Minuta de direção</small>
         </blockquote>
       </section>
 
@@ -109,20 +109,20 @@ export default function Home() {
         <article className="landing-metric-note">
           <Star className="landing-metric-icon" size={34} strokeWidth={1.75} />
           <div className="landing-metric-copy">
-            <strong>Tradicao</strong>
-            <span>que inspira. Ciencia que transforma.</span>
+            <strong>Tradição</strong>
+            <span>que inspira. Ciência que transforma.</span>
           </div>
         </article>
       </section>
 
       <section className="landing-programacao">
         <div className="landing-programacao-heading">
-          <span className="cieps-kicker">Programacao</span>
+          <span className="cieps-kicker">Programação</span>
           <h2 className="cieps-display">
-            Quatro dias para expandir conhecimento e conexoes.
+            Quatro dias para expandir conhecimento e conexões.
           </h2>
           <Link href="/programacao" prefetch={false}>
-            Ver programacao completa
+            Ver programação completa
           </Link>
         </div>
 
@@ -144,9 +144,9 @@ export default function Home() {
             Uma cidade que sustenta a escala do congresso.
           </h2>
           <p>
-            Ferrovia, formacao e encontro entre territorio e futuro orientam a
-            linguagem do CIEPS. A marca nao inventa grandeza. Ela organiza a
-            grandeza que ja existe.
+            Ferrovia, formação e encontro entre território e futuro orientam a
+            linguagem do CIEPS. A marca não inventa grandeza; ela organiza a
+            grandeza que já existe.
           </p>
         </article>
 
@@ -155,7 +155,7 @@ export default function Home() {
             src="/cieps/cieps-notebook.png"
             width={1280}
             height={720}
-            alt="Aplicacao da identidade visual do CIEPS em caderno"
+            alt="Aplicação da identidade visual do CIEPS em caderno"
           />
         </div>
       </section>
@@ -170,13 +170,13 @@ export default function Home() {
           />
         </div>
         <article className="landing-science-copy">
-          <span className="cieps-kicker">Trabalhos cientificos</span>
+          <span className="cieps-kicker">Trabalhos científicos</span>
           <h2 className="cieps-display">
-            Compartilhe ciencia. Transforme realidades.
+            Compartilhe ciência. Transforme realidades.
           </h2>
           <p>
-            Submeta seu trabalho e participe da producao cientifica que move o
-            futuro da saude.
+            Submeta seu trabalho e participe da produção científica que move o
+            futuro da saúde.
           </p>
           <Link href="/trabalhos" prefetch={false} className="cieps-button-outline">
             Conhecer submissao
@@ -184,9 +184,9 @@ export default function Home() {
         </article>
       </section>
 
-      <section className="landing-institutions" aria-label="Realizacao e apoio institucional">
+      <section className="landing-institutions" aria-label="Realização e apoio institucional">
         <article className="landing-institution-group">
-          <span className="landing-institution-label">Realizacao</span>
+          <span className="landing-institution-label">Realização</span>
           <div className="landing-logo-row">
             <div className="landing-logo-item landing-logo-dadg" aria-label="DADG">
               <Image

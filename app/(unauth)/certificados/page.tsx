@@ -10,9 +10,9 @@ export default function CertificadosPublicos() {
         <div className="certificados-public-icon">
           <FileCheck2 size={28} />
         </div>
-        <h1 className="cieps-display">A emissão não acontecerá pelo site.</h1>
+        <h1 className="cieps-display">A emissão não será realizada pelo site.</h1>
         <p>
-          O VIII CIEPS manterá nesta plataforma apenas as informações oficiais do
+          O I CIEPS manterá nesta plataforma apenas as informações oficiais do
           congresso. A orientação de acesso aos certificados será comunicada
           separadamente pelos canais institucionais.
         </p>
