@@ -1,5 +1,6 @@
 import { Collection, ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb';
+import { IPayment } from "../../../../lib/types/payments/paymentTicket.t"
 //
 //
 /**
@@ -11,7 +12,6 @@ import { connectToDatabase } from '@/app/lib/mongodb';
 //
 export async function POST(request, response) {
   //console.log("============== payment_notification_urls ================")
-  const PAGBANK_API_KEY = process.env.PAGBANK_API_KEY
   try {
     const requestData = await request.json()
     switch (true) {
@@ -89,7 +89,47 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
   const invoiceNumber = requestData.payment.invoiceNumber
   const { db } = await connectToDatabase()
   const collection = 'usuarios'
+  // Procurando a sessão de pagamento
 
+  // Por enquanto, todos os pagamentos são do ticket são feitos por sessão,
+  // Então tudo que vier para cá é exclusivamente sessão. O restante é por criação de 'Invoice'
+  if (requestData.payment.checkoutSession) {
+    // Temos um ticket válido.
+    // Vamos validar o pagamento
+    // Isso daqui é apenas para pagamento de Ticket em modo automático
+
+    const sessionPayment = await db.collection("pagamentos.sessoes").findOne({
+      orderId: requestData.payment.checkoutSession
+    })
+    if (!sessionPayment) {
+      return { "message": 'SessionPayment not found' }, { status: 404 }
+    }
+
+    if (sessionPayment.type === "ticket") {
+      var result = await db.collection(collection).updateOne({
+        _id: sessionPayment.owner
+      }, {
+        $set: {
+          "pagamento.situacao": 1,
+        }
+      });
+      console.log("cheguei!!!")
+      await db.collection("pagamentos.sessoes").updateOne({
+        _id: new ObjectId(sessionPayment._id)
+      }, { $set: { status: "PAID" } })
+      await db.collection("pagamentos.comprovantes").insertOne({
+        owner: new ObjectId(sessionPayment.owner),
+        type: "ticket",
+        title: "EM BREVE!"
+      }, { $set: { status: "PAID" } })
+
+
+      return { "message": 'success' }, { status: 200 }
+    } else {
+      return { "message": 'Esse tipo de pagamento por Sessão ainda não foi configurado' }, { status: 500 }
+    }
+  }
+  //
   const paymentType = await getPaymentByInvoiceNumber(invoiceNumber, db, collection, id_api)
   // console.log(paymentType)
   if (!paymentType) {
@@ -107,7 +147,7 @@ async function pagamentoRecebido(requestData) { // Chame se, somente se, o pagam
       $set: {
         "pagamento.lista_pagamentos.$[elem].status": requestData.event,
         "pagamento.situacao": 1,
-        "pagamento.tipo_pagamento":"asaas"
+        "pagamento.tipo_pagamento": "asaas"
       },
 
     };
@@ -180,17 +220,17 @@ async function pagamentoVencido(requestData) { // Chame se, somente se, o pagame
       id_api,
       "pagamento.lista_pagamentos.invoiceNumber": invoiceNumber
     };
-    
+
     // Primeiro, obtenha o documento para verificar o valor atual de pagamento.situacao
     const document = await db.collection(collection).findOne(filter);
-    
+
     // Verifique o valor de pagamento.situacao e prepare a atualização apropriada
     let update = {
       $push: {
         "pagamento.lista_pagamentos.$[elem]._webhook": requestData
       }
     };
-    
+
     if (document && document.pagamento && document.pagamento.situacao !== 1) {
       update.$set = {
         "pagamento.lista_pagamentos.$[elem].status": requestData.event,
@@ -201,14 +241,14 @@ async function pagamentoVencido(requestData) { // Chame se, somente se, o pagame
         "pagamento.lista_pagamentos.$[elem].status": requestData.event
       };
     }
-    
+
     const options = {
       arrayFilters: [{ "elem.invoiceNumber": invoiceNumber }]
     };
-    
+
     // Finalmente, execute a atualização com a condição
     const result = await db.collection(collection).updateOne(filter, update, options);
-    
+
 
     try {
 

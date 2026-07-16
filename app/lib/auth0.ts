@@ -14,33 +14,14 @@ function getLegacyIssuerDomain() {
   return issuer;
 }
 
-function getAppBaseUrl() {
-  const baseUrl = process.env.APP_BASE_URL || process.env.AUTH0_BASE_URL;
-
-  if (!baseUrl) {
-    return undefined;
-  }
-
-  if (/^https?:\/\//.test(baseUrl)) {
-    return baseUrl;
-  }
-
-  return `http://${baseUrl}`;
-}
-
 const auth0Domain = stripScheme(process.env.AUTH0_DOMAIN) || getLegacyIssuerDomain();
 
 export const isAuth0Configured = Boolean(auth0Domain);
 
 export const auth0 = isAuth0Configured
   ? new Auth0Client({
-      domain: auth0Domain,
-      appBaseUrl: getAppBaseUrl(),
-      authorizationParameters: {
-        audience: process.env.AUTH0_AUDIENCE,
-        scope: process.env.AUTH0_SCOPE || "openid profile email",
-      },
-    })
+    signInReturnToPath:"/painel"
+  })
   : null;
 
 export function getAuth0Client() {

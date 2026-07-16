@@ -1,18 +1,45 @@
+// 1. Interface reaproveitável para os parcelamentos
+export interface IParcelamento {
+    codigo: number;
+    valorCadaParcela: number;
+    totalParcelas: number;
+}
+
+// 2. Interface para agrupar os preços de cada lote
+export interface IPrecosLote {
+    valorAVista: number;
+    valorPix: number;
+    valorBoleto: number;
+    valorDebito: number;
+    parcelamentos: IParcelamento[];
+}
+
+// 3. Interface que define a estrutura de um lote individual
+export interface ILoteAutomatico {
+    codigo: number;
+    nome: string;
+    limiteVagas: number;
+    precos: IPrecosLote;
+}
+
+// 4. Interface Principal (Raiz)
 export interface IPaymentConfig {
-    "_id": string & { readonly __brand: 'ObjectId' },
-    "dataInit": "",
-    "dataEnd": "",
-    "parcelamentos": {
-        "codigo": number,
-        "valorCadaParcela": number,
-        "totalParcelas": number
-    }[],
-    "nome": string, // exemplo => "Terceiro Lote - CIEPS",
-    "valorAVista": number,
-    "valorBoleto": number,
-    "valorDebito": number,
-    "valorPix": number,
-    "pagamentosAceitos": ("PIX" | "BOLETO" | "CREDIT_CARD" | "DEBIT_CARD")[]
+    _id: string & { readonly __brand: 'ObjectId' };
+    dataInit: string;
+    dataEnd: string;
+    nome: string;
+    valorAVista: number;
+    valorBoleto: number;
+    valorDebito: number;
+    valorPix: number;
+    pagamentosAceitos: ("PIX" | "BOLETO" | "CREDIT_CARD" | "DEBIT_CARD")[];
+    parcelamentos: IParcelamento[];
+
+    // Novas propriedades de configuração
+    modo: "automatico" | "manual"; // Restringi para os dois modos literais previstos
+    configuracaoLotesAutomaticos?: {
+        lotes: ILoteAutomatico[];
+    };
 }
 
 
@@ -22,8 +49,8 @@ export interface IPayment {
     "lista_pagamentos": {
         "object": string,
         "id": string, // exemplo => "pay_e4qzehxllm4ep78p" NAO É OBJECT ID
-        "dateCreated": "2024-09-10",
-        "customer": "cus_000006200822",
+        "dateCreated": string, // 2024-09-10
+        "customer": string, // cus_000006200822
         "paymentLink": string | null,
         "value": number,
         "netValue": number,
