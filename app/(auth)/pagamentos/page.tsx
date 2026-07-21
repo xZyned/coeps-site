@@ -14,6 +14,7 @@ import {
     CheckCircle,
     AlertCircle,
     ArrowRight,
+    BarChart3,
 } from 'lucide-react';
 import './style.css';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
