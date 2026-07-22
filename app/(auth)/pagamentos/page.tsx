@@ -3,28 +3,38 @@
 import PagamentosManual from './paginaPagamentoAntigo';
 import 'react-credit-cards-2/dist/es/styles-compiled.css';
 import { useUser } from "@/lib/auth0-client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link";
 import Cards from 'react-credit-cards-2';
 import { IUser } from "@/app/lib/types/user/user.t"
-import { IPaymentConfig } from '@/lib/types/payments/payment.t';
+import { ILoteAutomatico, IPaymentConfig, IParcelamento } from '@/lib/types/payments/payment.t';
 import TermModal, { ModalProps } from '@/components/TermModal';
+import { AsyncStatePanel, Button, Modal, PageShell, StatusBanner } from '@/components/cieps';
 import {
     Loader2,
     CheckCircle,
-    AlertCircle,
     ArrowRight,
     BarChart3,
+    Copy,
+    QrCode,
 } from 'lucide-react';
 import './style.css';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
+import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+
+type PaymentConfigView = IPaymentConfig & {
+    sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false;
+    loteAutomaticoAtual?: ILoteAutomatico;
+};
 
 const Pagamentos = () => {
-    const [data, setData] = useState<{ pagamento: IUser["pagamento"] }>(undefined);
+    const [data, setData] = useState<{ pagamento: IUser["pagamento"] } | undefined>(undefined);
     const { user, isLoading } = useUser();
     const [isLoadingPaymentData, setIsLoadingPaymentData] = useState<boolean>(true);
-    const [dataPaymentConfig, setDataPaymentConfig] = useState<IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } | undefined>(undefined);
+    const [dataPaymentConfig, setDataPaymentConfig] = useState<PaymentConfigView | undefined>(undefined);
     const [isFetchingData, setIsFetchingData] = useState<boolean>(true);
+    const [pageError, setPageError] = useState<string | null>(null);
+    const [requestVersion, setRequestVersion] = useState(0);
     const handleIsFetchingData = (event: boolean) => {
         setIsFetchingData(event);
     };
@@ -32,7 +42,7 @@ const Pagamentos = () => {
     useEffect(() => {
         const enviarRequisicaoGet = async () => {
             try {
-                const response = await fetch("/api/get/usuariosPagamentos", {
+                const response = await fetchWithTimeout("/api/get/usuariosPagamentos", {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -40,29 +50,29 @@ const Pagamentos = () => {
                 });
 
                 if (!response.ok) {
-                    console.log(response);
                     throw new Error('Falha ao enviar a requisição GET');
                 }
 
                 const responseData: { data: { pagamento: IUser["pagamento"] } } = await response.json();
                 setData(responseData.data)
-                console.log('Resposta da requisição GET:', responseData);
 
                 handleIsFetchingData(false);
-            } catch (error) {
-                console.error('Erro ao enviar a requisição GET:', error);
+            } catch {
+                setPageError('Não foi possível consultar seus pagamentos.');
+            } finally {
+                handleIsFetchingData(false);
             }
         };
 
         if (!isLoading) {
             enviarRequisicaoGet();
         }
-    }, [isLoading, user]);
+    }, [isLoading, user, requestVersion]);
 
     useEffect(() => {
         const enviarRequisicaoGet = async () => {
             try {
-                const response = await fetch("/api/payment/paymentConfigs", {
+                const response = await fetchWithTimeout("/api/payment/paymentConfigs", {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -70,46 +80,23 @@ const Pagamentos = () => {
                 });
 
                 if (!response.ok) {
-                    console.log(response);
                     throw new Error('Falha ao enviar a requisição GET');
                 }
 
-                const responseData: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } = await response.json();
+                const responseData: PaymentConfigView = await response.json();
                 setDataPaymentConfig(responseData);
-            } catch (error) {
-                console.error('Erro ao enviar a requisição GET:', error);
+            } catch {
+                setPageError('Não foi possível consultar as formas de pagamento.');
             } finally {
                 setIsLoadingPaymentData(false);
             }
         };
         enviarRequisicaoGet();
-    }, []);
-    const hidratarPágina = async () => { // faz a mesma hidratacão do useEffect.
-        const enviarRequisicaoGet = async () => {
-            try {
-                const response = await fetch("/api/payment/paymentConfigs", {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                if (!response.ok) {
-                    console.log(response);
-                    throw new Error('Falha ao enviar a requisição GET');
-                }
-
-                const responseData: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } = await response.json();
-                setDataPaymentConfig(responseData);
-            } catch (error) {
-                console.error('Erro ao enviar a requisição GET:', error);
-            } finally {
-                setIsLoadingPaymentData(false);
-            }
-        };
-        enviarRequisicaoGet();
+    }, [requestVersion]);
+    const hidratarPágina = async () => {
+        setIsLoadingPaymentData(true);
         try {
-            const response = await fetch("/api/payment/paymentConfigs", {
+            const response = await fetchWithTimeout("/api/payment/paymentConfigs", {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -117,21 +104,42 @@ const Pagamentos = () => {
             });
 
             if (!response.ok) {
-                console.log(response);
                 throw new Error('Falha ao enviar a requisição GET');
             }
 
-            const responseData: IPaymentConfig & { sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false } = await response.json();
+            const responseData: PaymentConfigView = await response.json();
             setDataPaymentConfig(responseData);
-        } catch (error) {
-            console.error('Erro ao enviar a requisição GET:', error);
+            setPageError(null);
+        } catch {
+            setPageError('Não foi possível atualizar a sessão de pagamento.');
         } finally {
             setIsLoadingPaymentData(false);
         }
     };
 
+    const retryPage = () => {
+        setPageError(null);
+        setIsFetchingData(true);
+        setIsLoadingPaymentData(true);
+        setRequestVersion((version) => version + 1);
+    };
+
     if (isFetchingData || isLoadingPaymentData) {
         return <LoadingScreen />;
+    }
+
+    if (pageError || !data || !dataPaymentConfig) {
+        return (
+            <PageShell className="flex items-center justify-center">
+                <AsyncStatePanel
+                    status="error"
+                    errorTitle="Pagamentos indisponíveis"
+                    message={pageError ?? 'Os dados de pagamento retornaram incompletos.'}
+                    onRetry={retryPage}
+                    className="w-full max-w-2xl"
+                />
+            </PageShell>
+        );
     }
 
     // return <PagamentosManual />
@@ -227,14 +235,25 @@ const Pagamentos = () => {
                 dataPaymentConfig.modo == "automatico" &&
                 (
                     dataPaymentConfig.sessaoPagamentoAutomáticoAtiva !== false ? (
-                        // @ts-expect-error: Apenas erro de tipificação.
-                        <PaymentSessionActive dataPayment={dataPaymentConfig} hydratePage={hidratarPágina} />
+                        <PaymentSessionActive
+                            dataPayment={{
+                                ...dataPaymentConfig,
+                                sessaoPagamentoAutomáticoAtiva: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva,
+                            }}
+                            hydratePage={hidratarPágina}
+                        />
                     ) :
                         <NotPayedYet dataPaymentConfig={dataPaymentConfig} hydratePage={hidratarPágina} />
                 )
             }
             {
-                dataPaymentConfig.modo == "manual" && <PagamentosManual />
+                dataPaymentConfig.modo == "manual" && (
+                    <PagamentosManual
+                        initialPayment={data.pagamento}
+                        config={dataPaymentConfig}
+                        onRefresh={retryPage}
+                    />
+                )
             }
         </div >
     );
@@ -251,11 +270,11 @@ function PaymentSessionActive({
     const [tempoRestante, setTempoRestante] = useState<string>("Calculando...");
     const [textError, setTextError] = useState<string | false>(false);
     const [paymentType, setpaymentType] = useState<"PIX" | "CREDIT_CARD" | "NONE">("NONE");
+    const [copied, setCopied] = useState(false);
 
     const lote = paymentConfig.sessaoPagamentoAutomáticoAtiva.paymentConfig;
 
     useEffect(() => {
-        console.log(paymentConfig.sessaoPagamentoAutomáticoAtiva.status)
         const dataExpiracao = new Date(paymentConfig.sessaoPagamentoAutomáticoAtiva.expiresAt).getTime();
 
         const timer = setInterval(() => {
@@ -278,11 +297,11 @@ function PaymentSessionActive({
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [paymentConfig.sessaoPagamentoAutomáticoAtiva.expiresAt, hydratePage]);
+    }, [paymentConfig.sessaoPagamentoAutomáticoAtiva.expiresAt, paymentConfig.sessaoPagamentoAutomáticoAtiva.status]);
 
     if (paymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PENDING") {
         return (
-            <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
+            <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-linha'>
                 <h1>Seu pagamento está sendo processado</h1>
                 <h1>Aguarde.</h1>
             </div>
@@ -290,21 +309,21 @@ function PaymentSessionActive({
     }
     if (paymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PAID") {
         return (
-            <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
+            <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-linha'>
                 <h1>Você já realizou o pagamento!</h1>
             </div>
         )
     }
 
     return (
-        <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
+        <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-linha'>
             {/* MODAL DE ERRO */}
             {textError && (
                 <ModalError
                     texto={textError}
                     handleIsModalError={(value: string | false) => {
                         setTextError(false)
-                        window.location.reload() // Recarrega a página para atualizar o lote vigente e permitir que o usuário tente pagar novamente
+                        void hydratePage()
                     }
                     }
                 />
@@ -313,11 +332,11 @@ function PaymentSessionActive({
             <div className='flex flex-col gap-6'>
 
                 {/* CABEÇALHO DE SUCESSO E CRONÔMETRO */}
-                <div className='flex items-center gap-2 text-emerald-600 font-bold w-full text-center'>
-                    <h1 className='w-full text-center text-2xl font-bold text-slate-800'>{lote.nome}</h1>
+                <div className='flex items-center gap-2 text-[#2f7651] font-bold w-full text-center'>
+                    <h1 className='w-full text-center text-2xl font-bold text-tinta'>{lote.nome}</h1>
                 </div>
-                <div className='flex flex-col sm:flex-row gap-4 justify-between items-center bg-emerald-50 p-4 rounded-lg border border-emerald-200'>
-                    <div className='text-emerald-800 font-medium'>
+                <div className='flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#2f7651]/10 p-4 rounded-lg border border-[#2f7651]/30'>
+                    <div className='text-[#245f41] font-medium'>
                         🎉 Parabéns! Sua vaga está reservada.
                     </div>
                     <div className='bg-white px-4 py-2 rounded-md shadow-sm border border-red-200 text-red-600 font-bold flex items-center gap-2'>
@@ -327,22 +346,22 @@ function PaymentSessionActive({
                 </div>
 
                 {/* RESUMO DO LOTE */}
-                <div className='bg-slate-50 p-5 rounded-lg border border-slate-100 flex flex-col gap-3'>
-                    <h2 className='text-lg font-bold text-slate-800 mb-2 border-b border-slate-200 pb-2'>
+                <div className='bg-papel p-5 rounded-lg border border-linha flex flex-col gap-3'>
+                    <h2 className='text-lg font-bold text-tinta mb-2 border-b border-linha pb-2'>
                         Resumo do Pagamento - {lote.nome}
                     </h2>
 
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm'>
                         <div className='flex flex-col gap-2'>
-                            <p className='text-slate-700'><span className='font-semibold text-emerald-600'>PIX:</span> R$ {lote.precos.valorPix}</p>
-                            <p className='text-slate-700'><span className='font-semibold'>Boleto:</span> R$ {lote.precos.valorBoleto}</p>
-                            <p className='text-slate-700'><span className='font-semibold'>Débito:</span> R$ {lote.precos.valorDebito}</p>
-                            <p className='text-slate-700'><span className='font-semibold'>Crédito à vista:</span> R$ {lote.precos.valorAVista}</p>
+                            <p className='text-tinta'><span className='font-semibold text-[#2f7651]'>PIX:</span> R$ {lote.precos.valorPix}</p>
+                            <p className='text-tinta'><span className='font-semibold'>Boleto:</span> R$ {lote.precos.valorBoleto}</p>
+                            <p className='text-tinta'><span className='font-semibold'>Débito:</span> R$ {lote.precos.valorDebito}</p>
+                            <p className='text-tinta'><span className='font-semibold'>Crédito à vista:</span> R$ {lote.precos.valorAVista}</p>
                         </div>
                         <div className='flex flex-col gap-2'>
-                            <span className='font-semibold text-indigo-600'>Opções de Parcelamento (Crédito):</span>
+                            <span className='font-semibold text-goles'>Opções de Parcelamento (Crédito):</span>
                             {lote.precos.parcelamentos.map((props, index) => (
-                                <div key={index} className='text-slate-600 pl-2 border-l-2 border-indigo-200'>
+                                <div key={index} className='text-muted pl-2 border-l-2 border-goles/30'>
                                     {props.totalParcelas}x de R$ {props.valorCadaParcela}
                                 </div>
                             ))}
@@ -352,17 +371,17 @@ function PaymentSessionActive({
 
                 {/* ESCOLHA DO MÉTODO DE PAGAMENTO */}
                 <div className='flex flex-col gap-3 mt-2'>
-                    <h3 className='font-semibold text-slate-700'>Como deseja pagar?</h3>
+                    <h3 className='font-semibold text-tinta'>Como deseja pagar?</h3>
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                         <button
                             onClick={() => setpaymentType("PIX")}
-                            className={`p-4 rounded-xl border-2 font-bold transition-all text-center ${paymentType === "PIX" ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'}`}
+                            className={`p-4 rounded-xl border-2 font-bold transition-all text-center ${paymentType === "PIX" ? 'border-[#2f7651] bg-[#2f7651]/10 text-[#2f7651]' : 'border-linha bg-white text-muted hover:border-[#2f7651]/40'}`}
                         >
                             Pagar com PIX
                         </button>
                         <button
                             onClick={() => setpaymentType("CREDIT_CARD")}
-                            className={`p-4 rounded-xl border-2 font-bold transition-all text-center ${paymentType === "CREDIT_CARD" ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}
+                            className={`p-4 rounded-xl border-2 font-bold transition-all text-center ${paymentType === "CREDIT_CARD" ? 'border-goles bg-goles/10 text-goles' : 'border-linha bg-white text-muted hover:border-goles/40'}`}
                         >
                             Cartão de Crédito
                         </button>
@@ -373,18 +392,24 @@ function PaymentSessionActive({
                 <div className='mt-2'>
                     {paymentType === "PIX" && (
 
-                        <div className='flex flex-col items-center justify-center p-8 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl gap-4'>
+                        <div className='flex flex-col items-center justify-center p-8 bg-papel border-2 border-dashed border-linha rounded-xl gap-4'>
                             {
                                 paymentConfig.sessaoPagamentoAutomáticoAtiva.pixCode != null ?
                                     <div>
-                                        <p className='text-slate-600 font-medium text-center'>Escaneie o QR Code ou copie o código PIX</p>
-                                        <div className='w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 font-bold'>
-
-                                            <img src="00020126360014BR.GOV.BCB.PIX0114+55119999999995204000053039865802BR5925NOME DO RECEBEDOR6009SAO PAULO62070503***6304ABCD">
-                                            </img>
+                                        <p className='text-muted font-medium text-center'>Escaneie o QR Code ou copie o código PIX</p>
+                                        <div className='w-48 h-48 bg-[var(--cieps-paper)] border border-[var(--cieps-line)] rounded-lg flex items-center justify-center text-[var(--cieps-blue)] font-bold' aria-label="Código PIX disponível para cópia">
+                                            <QrCode size={88} aria-hidden="true" />
                                         </div>
-                                        <button className='mt-2 px-6 py-2 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors'>
-                                            Copiar Código PIX
+                                        <button
+                                            type="button"
+                                            className='mt-2 inline-flex items-center justify-center gap-2 px-6 py-2 bg-[var(--cieps-red)] text-white font-medium rounded-lg hover:bg-[#8f2323] transition-colors'
+                                            onClick={async () => {
+                                                await navigator.clipboard.writeText(paymentConfig.sessaoPagamentoAutomáticoAtiva.pixCode ?? '');
+                                                setCopied(true);
+                                            }}
+                                        >
+                                            <Copy size={17} aria-hidden="true" />
+                                            {copied ? 'Código copiado' : 'Copiar Código PIX'}
                                         </button>
                                     </div> :
                                     <div className='text-black'>
@@ -415,10 +440,11 @@ function PaymentSessionActive({
     );
 }
 //
-function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: any; hydratePage: () => void }) {
+function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: PaymentConfigView; hydratePage: () => void }) {
     const [step, setStep] = useState(0);
     const [textoModal, setTextoModal] = useState<string | false>(false);
     const [loadingModal, setLoadingModal] = useState<boolean>(false);
+    const ticketRequestInFlight = useRef(false);
     const loteAtual = dataPaymentConfig.loteAutomaticoAtual;
 
     // Estado para guardar os dados do formulário
@@ -493,7 +519,7 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
 
     // Validação do Passo 2 (Finalizar)
     const handleGerarTicket = async () => {
-        setLoadingModal(true);
+        if (ticketRequestInFlight.current) return;
         const novosErros: { [key: string]: string } = {};
 
         if (!formData.cep.trim()) novosErros.cep = 'O CEP é obrigatório.';
@@ -503,44 +529,31 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
 
         if (Object.keys(novosErros).length > 0) {
             setErros(novosErros);
-            setLoadingModal(false); // Adicionado para tirar o loading se der erro de validação
             return;
         } else {
             setErros({});
-            console.log('Ticket Gerado com sucesso!', formData);
         }
 
-        const paymentPostResponse = await fetch(`/api/v1/payment/session/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ...formData, loteAtualFrontEnd: loteAtual }),
-        });
-
-        if (!paymentPostResponse.ok) {
-            const errorData: any = await paymentPostResponse.json();
+        ticketRequestInFlight.current = true;
+        setLoadingModal(true);
+        try {
+            const paymentPostResponse = await fetchWithTimeout(`/api/v1/payment/session/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...formData, loteAtualFrontEnd: loteAtual }),
+            });
+            const responseData: { message?: string } = await paymentPostResponse.json().catch(() => ({}));
+            if (!paymentPostResponse.ok) {
+                throw new Error(responseData.message || "Ocorreu um erro ao processar seu pagamento.");
+            }
+            await hydratePage();
+        } catch (error) {
+            setTextoModal(error instanceof Error ? error.message : "Ocorreu um erro ao processar seu pagamento.");
+        } finally {
+            ticketRequestInFlight.current = false;
             setLoadingModal(false);
-            hydratePage();
-            setTextoModal(errorData.message || "Ocorreu um erro ao processar seu pagamento.");
-            return;
         }
-
-        // se Deu tudo certo, recarregar a página
-        window.location.reload();
     };
-
-    if (dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PENDING") {
-        <div>
-            <h1>Seu pagamento está sendo processado</h1>
-            <h1>Aguarde.</h1>
-        </div>
-    }
-    if (dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.status == "PAID") {
-        <div>
-            <h1>Você já realizou o pagamento!</h1>
-        </div>
-    }
 
     return (
         <div className='pagamentos-main'>
@@ -549,30 +562,30 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
 
             {/* ETAPA 0: INFORMAÇÕES E VALORES INICIAIS */}
             {step === 0 && (
-                <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
+                <div className='pagamentos-main max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-linha'>
                     <div className='flex flex-col gap-6'>
                         <div className='bg-amber-50 text-amber-800 p-4 rounded-lg border-l-4 border-amber-400 font-medium'>
                             Seu Pagamento ainda não foi confirmado. Realize o pagamento para ter acesso total à página do congresso.
                         </div>
                         <div className='flex flex-col gap-4'>
-                            <h1 className='w-full text-2xl font-bold text-slate-800 text-center'>
+                            <h1 className='w-full text-2xl font-bold text-tinta text-center'>
                                 {loteAtual?.nome ? `${loteAtual.nome}` : "Não foi possível identificar o lote atual."}
                             </h1>
-                            <div className='text-slate-700 text-lg'>
-                                <h1 className='inline font-bold text-indigo-600'>Atenção! Para os primeiros {loteAtual?.limiteVagas} participantes</h1> os valores são:
+                            <div className='text-tinta text-lg'>
+                                <h1 className='inline font-bold text-goles'>Atenção! Para os primeiros {loteAtual?.limiteVagas} participantes</h1> os valores são:
                             </div>
-                            <div className='bg-slate-50 p-5 rounded-lg border border-slate-100 flex flex-col gap-3'>
+                            <div className='bg-papel p-5 rounded-lg border border-linha flex flex-col gap-3'>
                                 {
                                     dataPaymentConfig.pagamentosAceitos.map((tipoPagamento: string, index: number) => {
                                         return (
-                                            <div key={index} className='text-slate-800'>
-                                                {tipoPagamento === "PIX" && <p className='font-semibold text-emerald-600'>- PIX: R$ {loteAtual?.precos.valorPix}</p>}
+                                            <div key={index} className='text-tinta'>
+                                                {tipoPagamento === "PIX" && <p className='font-semibold text-[#2f7651]'>- PIX: R$ {loteAtual?.precos.valorPix}</p>}
                                                 {tipoPagamento === "BOLETO" && <p className='font-medium'>- BOLETO: R$ {loteAtual?.precos.valorBoleto}</p>}
-                                                {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-indigo-600'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela: any, idx: number) => <span key={idx} className='text-slate-600 font-normal ml-4 block mt-1'>► {idx + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span>)}</p>}
+                                                {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-goles'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela: IParcelamento, idx: number) => <span key={idx} className='text-muted font-normal ml-4 block mt-1'>► {idx + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span>)}</p>}
                                                 {tipoPagamento === "DEBIT_CARD" && <p className='font-medium'>- DÉBITO: R$ {loteAtual?.precos.valorDebito}</p>}
                                             </div>
                                         )
-                                    })
+            }, 30_000)
                                 }
                                 <div className='mt-4 bg-red-50 text-red-600 p-4 rounded-lg border border-red-100 text-center font-medium text-sm'>
                                     Preencha suas informações e você terá 15 minutos para realizar seu pagamento no valor prometido.
@@ -580,7 +593,7 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
 
                                 <button
                                     onClick={() => setStep(1)}
-                                    className='w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors'
+                                    className='w-full mt-2 bg-goles hover:bg-[#8f2323] text-white font-bold py-3 px-4 rounded-lg transition-colors'
                                 >
                                     Preencher Informações de Pagamento
                                 </button>
@@ -592,21 +605,21 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
 
             {/* ETAPAS 1 e 2: FORMULÁRIOS COM CABEÇALHO FIXO COM TODOS OS VALORES */}
             {step > 0 && (
-                <div className='max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-slate-200'>
+                <div className='max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-linha'>
 
                     {/* CABEÇALHO FIXO */}
-                    <div className='mb-6 border-b border-slate-200 pb-6'>
-                        <h2 className='text-xl font-bold text-slate-800 mb-4'>Finalizar Pagamento</h2>
+                    <div className='mb-6 border-b border-linha pb-6'>
+                        <h2 className='text-xl font-bold text-tinta mb-4'>Finalizar Pagamento</h2>
 
-                        <div className='bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col gap-2 mb-4 text-sm'>
-                            <p className='font-bold text-slate-700 mb-1'>Valores do Lote Atual:</p>
+                        <div className='bg-papel p-4 rounded-lg border border-linha flex flex-col gap-2 mb-4 text-sm'>
+                            <p className='font-bold text-tinta mb-1'>Valores do Lote Atual:</p>
                             {
                                 dataPaymentConfig.pagamentosAceitos.map((tipoPagamento: string, index: number) => {
                                     return (
-                                        <div key={index} className='text-slate-800'>
-                                            {tipoPagamento === "PIX" && <p className='font-semibold text-emerald-600'>- PIX: R$ {loteAtual?.precos.valorPix}</p>}
+                                        <div key={index} className='text-tinta'>
+                                            {tipoPagamento === "PIX" && <p className='font-semibold text-[#2f7651]'>- PIX: R$ {loteAtual?.precos.valorPix}</p>}
                                             {tipoPagamento === "BOLETO" && <p className='font-medium'>- BOLETO: R$ {loteAtual?.precos.valorBoleto}</p>}
-                                            {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-indigo-600'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela: any, idx: number) => <span key={idx} className='text-slate-600 font-normal ml-4 block mt-1'>► {idx + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span>)}</p>}
+                                            {tipoPagamento === "CREDIT_CARD" && <p className='font-medium text-goles'>- CRÉDITO: <br /> {loteAtual?.precos.parcelamentos.map((parcela: IParcelamento, idx: number) => <span key={idx} className='text-muted font-normal ml-4 block mt-1'>► {idx + 1}. vez. {parcela.totalParcelas} parcelas de R$ {parcela.valorCadaParcela}</span>)}</p>}
                                             {tipoPagamento === "DEBIT_CARD" && <p className='font-medium'>- DÉBITO: R$ {loteAtual?.precos.valorDebito}</p>}
                                         </div>
                                     )
@@ -622,59 +635,64 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
                     {/* ETAPA 1: DADOS PESSOAIS */}
                     {step === 1 && (
                         <div className='flex flex-col gap-4'>
-                            <h3 className='font-semibold text-slate-700 mb-2'>Passo 1: Dados Pessoais</h3>
+                            <h3 className='font-semibold text-tinta mb-2'>Passo 1: Dados Pessoais</h3>
 
                             <div>
-                                <label className='block text-sm font-medium text-slate-700 mb-1'>Nome Completo do Pagador</label>
+                                <label htmlFor="payer-name" className='block text-sm font-medium text-tinta mb-1'>Nome completo do pagador</label>
                                 <input
+                                    id="payer-name"
                                     type="text"
                                     value={formData.nome}
                                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                                     placeholder="Ex: João da Silva"
-                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.nome ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                    className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.nome ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                 />
                                 {erros.nome && <span className="text-red-500 text-xs mt-1 block">{erros.nome}</span>}
                             </div>
 
                             <div>
-                                <label className='block text-sm font-medium text-slate-700 mb-1'>CPF - Sem pontuação</label>
+                                <label htmlFor="payer-cpf" className='block text-sm font-medium text-tinta mb-1'>CPF - sem pontuação</label>
                                 <input
+                                    id="payer-cpf"
+                                    inputMode="numeric"
                                     type="text"
                                     value={formData.cpf}
                                     onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
                                     placeholder="00000000000"
                                     maxLength={14}
-                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.cpf ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                    className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.cpf ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                 />
                                 {erros.cpf && <span className="text-red-500 text-xs mt-1 block">{erros.cpf}</span>}
                             </div>
                             <div>
-                                <label className='block text-sm font-medium text-slate-700 mb-1'>Telefone</label>
+                                <label htmlFor="payer-phone" className='block text-sm font-medium text-tinta mb-1'>Telefone</label>
                                 <input
-                                    type="text"
+                                    id="payer-phone"
+                                    type="tel"
                                     value={formData.telefone}
                                     onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.telefone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                    className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.telefone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                 />
                                 {erros.telefone && <span className="text-red-500 text-xs mt-1 block">{erros.telefone}</span>}
                             </div>
                             <div>
-                                <label className='block text-sm font-medium text-slate-700 mb-1'>e-mail</label>
+                                <label htmlFor="payer-email" className='block text-sm font-medium text-tinta mb-1'>E-mail</label>
                                 <input
-                                    type="text"
+                                    id="payer-email"
+                                    type="email"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     placeholder="exemplo@email.com"
-                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                    className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                 />
                                 {erros.email && <span className="text-red-500 text-xs mt-1 block">{erros.email}</span>}
                             </div>
 
                             <div className='flex justify-between mt-4'>
-                                <button onClick={() => setStep(0)} className='text-slate-500 hover:text-slate-700 font-medium px-4 py-2'>
+                                <button onClick={() => setStep(0)} className='text-muted hover:text-tinta font-medium px-4 py-2'>
                                     Voltar
                                 </button>
-                                <button onClick={handleAvancarParaPasso2} className='bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors'>
+                                <button onClick={handleAvancarParaPasso2} className='bg-goles hover:bg-[#8f2323] text-white font-bold py-2 px-6 rounded-lg transition-colors'>
                                     Próximo Passo
                                 </button>
                             </div>
@@ -684,70 +702,77 @@ function NotPayedYet({ dataPaymentConfig, hydratePage }: { dataPaymentConfig: an
                     {/* ETAPA 2: ENDEREÇO */}
                     {step === 2 && (
                         <div className='flex flex-col gap-4'>
-                            <h3 className='font-semibold text-slate-700 mb-2'>Passo 2: Endereço</h3>
+                            <h3 className='font-semibold text-tinta mb-2'>Passo 2: Endereço</h3>
 
                             <div>
-                                <label className='block text-sm font-medium text-slate-700 mb-1'>CEP - Sem pontuação</label>
+                                <label htmlFor="payer-zip" className='block text-sm font-medium text-tinta mb-1'>CEP - sem pontuação</label>
                                 <input
+                                    id="payer-zip"
+                                    inputMode="numeric"
                                     type="text"
                                     value={formData.cep}
                                     onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
                                     placeholder="00000000"
-                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.cep ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                    className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.cep ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                 />
                                 {erros.cep && <span className="text-red-500 text-xs mt-1 block">{erros.cep}</span>}
                             </div>
 
-                            <div className='grid grid-cols-4 gap-4'>
-                                <div className='col-span-3'>
-                                    <label className='block text-sm font-medium text-slate-700 mb-1'>Rua / Logradouro</label>
+                            <div className='grid grid-cols-1 gap-4 sm:grid-cols-4'>
+                                <div className='sm:col-span-3'>
+                                    <label htmlFor="payer-street" className='block text-sm font-medium text-tinta mb-1'>Rua / Logradouro</label>
                                     <input
+                                        id="payer-street"
                                         type="text"
                                         value={formData.rua}
                                         onChange={(e) => setFormData({ ...formData, rua: e.target.value })}
-                                        className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.rua ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                        className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.rua ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                     />
                                     {erros.rua && <span className="text-red-500 text-xs mt-1 block">{erros.rua}</span>}
                                 </div>
-                                <div className='col-span-1'>
-                                    <label className='block text-sm font-medium text-slate-700 mb-1'>Número</label>
+                                <div className='sm:col-span-1'>
+                                    <label htmlFor="payer-number" className='block text-sm font-medium text-tinta mb-1'>Número</label>
                                     <input
+                                        id="payer-number"
+                                        inputMode="numeric"
                                         type="text"
                                         value={formData.numero}
                                         onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                                        className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.numero ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                        className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.numero ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                     />
                                     {erros.numero && <span className="text-red-500 text-xs mt-1 block">{erros.numero}</span>}
                                 </div>
                             </div>
 
                             <div>
-                                <label className='block text-sm font-medium text-slate-700 mb-1'>Complemento (Opcional)</label>
+                                <label htmlFor="payer-complement" className='block text-sm font-medium text-tinta mb-1'>Complemento (opcional)</label>
                                 <input
+                                    id="payer-complement"
                                     type="text"
                                     value={formData.complemento}
                                     onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
                                     placeholder="Apto, Bloco, Casa 2..."
-                                    className='w-full border border-slate-300 rounded-lg p-3 text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                                    className='w-full border border-linha rounded-lg p-3 text-tinta focus:outline-none focus:border-goles focus:ring-1 focus:ring-goles'
                                 />
                             </div>
 
                             <div>
-                                <label className='block text-sm font-medium text-slate-700 mb-1'>Bairro</label>
+                                <label htmlFor="payer-neighborhood" className='block text-sm font-medium text-tinta mb-1'>Bairro</label>
                                 <input
+                                    id="payer-neighborhood"
                                     type="text"
                                     value={formData.bairro}
                                     onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
-                                    className={`w-full border rounded-lg p-3 text-slate-800 focus:outline-none focus:ring-1 ${erros.bairro ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                                    className={`w-full border rounded-lg p-3 text-tinta focus:outline-none focus:ring-1 ${erros.bairro ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-linha focus:border-goles focus:ring-goles'}`}
                                 />
                                 {erros.bairro && <span className="text-red-500 text-xs mt-1 block">{erros.bairro}</span>}
                             </div>
                             <div className='flex justify-between mt-4'>
-                                <button onClick={() => setStep(1)} className='text-slate-500 hover:text-slate-700 font-medium px-4 py-2'>
+                                <button onClick={() => setStep(1)} className='text-muted hover:text-tinta font-medium px-4 py-2'>
                                     Voltar
                                 </button>
-                                <button onClick={handleGerarTicket} className='bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-colors'>
-                                    Gerar Ticket de Pagamento
+                                <button type="button" onClick={handleGerarTicket} disabled={loadingModal} className='bg-[#2f7651] hover:bg-[#245f41] text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-60'>
+                                    {loadingModal ? 'Gerando sessão…' : 'Gerar ticket de pagamento'}
                                 </button>
                             </div>
                         </div>
@@ -804,38 +829,19 @@ const LoadingScreen = () => {
 // Modal de carregamento
 const LoadingModal = () => {
     return (
-        <div className="loading-modal">
-            <div className="loading-modal-content">
-                <Loader2 className="loading-modal-spinner" />
-                <p className="loading-modal-text">Processando pagamento...</p>
-            </div>
-        </div>
+        <Modal open onClose={() => undefined} title="Processando pagamento" description="Não feche esta janela.">
+            <AsyncStatePanel status="loading" loadingTitle="Preparando sua sessão" />
+        </Modal>
     );
 };
 
 // Componente de erro (mantido do código original)
 const ModalError = ({ texto, handleIsModalError }: { texto: string; handleIsModalError: (value: string | false) => void }) => {
     return (
-        <div className="loading-modal">
-            <div className="loading-modal-content">
-                <div className="form-content">
-                    <div className="form-header">
-                        <div className="form-icon">
-                            <AlertCircle size={20} />
-                        </div>
-                        <h3 className="form-title">Erro</h3>
-                    </div>
-                    <p className="intro-text">{texto}</p>
-                    <button
-                        className="form-button"
-                        onClick={() => handleIsModalError(false)}
-                    >
-                        <CheckCircle size={18} style={{ marginRight: '8px' }} />
-                        OK
-                    </button>
-                </div>
-            </div>
-        </div>
+        <Modal open onClose={() => handleIsModalError(false)} title="Não foi possível concluir">
+            <StatusBanner tone="error" title="O pagamento não foi processado">{texto}</StatusBanner>
+            <Button className="mt-5" full onClick={() => handleIsModalError(false)}>Entendi</Button>
+        </Modal>
     );
 };
 
@@ -846,12 +852,12 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
     const [messageModalWarning, setMessageModalWarning] = useState("")
     const [textoPagamentoEscolhido, setTextoPagametoEscolhido] = useState("")
     const [personalInfo, setPersonalInfo] = useState({
-        name: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.name || '',
-        email: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.email || '',
-        cpfCnpj: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.cpf || '',
-        postalCode: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.zipCode || '',
-        addressNumber: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.number || '',
-        phone: dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.phone || '',
+        name: String(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.name || ''),
+        email: String(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.email || ''),
+        cpfCnpj: String(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.cpf || ''),
+        postalCode: String(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.zipCode || ''),
+        addressNumber: String(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.number || ''),
+        phone: String(dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.userProps.phone || ''),
     });
     const [cardInfo, setCardInfo] = useState<{
         number: string,
@@ -868,7 +874,8 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
     });
     const [isConfirmationOpen, setConfirmationOpen] = useState(false);
     const [isLoading, setLoading] = useState(false);
-    const [idPagamento, setIdPagamento] = useState(undefined)
+    const cardRequestInFlight = useRef(false);
+    const [idPagamento, setIdPagamento] = useState<number | undefined>(undefined)
     const [dataModalProps, setDataModalProps] = useState<ModalProps>({
         isOpen: false,
         onClose: () => {
@@ -878,37 +885,7 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
     })
     //
 
-    useEffect(() => {/*
-        const fetchData = async () => {
-            try {
-                const response = await fetch('/api/payment/paymentConfigs', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Erro ao buscar dados');
-                }
-
-                const data: IPaymentConfig = await response.json();
-                setData(data)
-                setLoading(false)
-                // console.log('Dados recebidos:', data);
-
-                // Faça algo com os dados aqui
-
-            } catch (error) {
-                setLoading(false)
-                setMessageModalWarning("Erro ao buscar dados. Por favor recarregue a página e tente novamente. Caso o problema persista, entre em contato com a equipe CIEPS.")
-                console.error('Erro ao buscar dados:', error);
-            }
-        };
-        fetchData();
-    */}, []);
-
-    const handleIdPagamento = (id) => {
+    const handleIdPagamento = (id: number) => {
         setIdPagamento(id)
     }
 
@@ -954,12 +931,13 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
         setConfirmationOpen(true);
     };
 
-    const handleConfirm = async () => {
-        // …………
+    const handleConfirm = () => {
         setDataModalProps((prev) => ({
             ...prev,
             isOpen: true,
             onConfirm: async () => {
+                if (cardRequestInFlight.current) return;
+                cardRequestInFlight.current = true;
                 setConfirmationOpen(false);
                 setLoading(true);
                 setDataModalProps((prev) => ({ ...prev, isOpen: false }))
@@ -974,25 +952,19 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                     };
 
                     // Envie o POST request com o JSON
-                    const response = await fetch('/api/v1/payment/session/creditCard/', { //
+                    const response = await fetchWithTimeout('/api/v1/payment/session/creditCard/', { //
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(payload),
-                    });
-                    const result: { message: string } = await response.json();
+                    }, 30_000);
+                    const result: { message?: string } = await response.json().catch(() => ({}));
                     if (!response.ok) {
-                        //console.log(result)
-                        if (response.status === 409) {
-                            setMessageModalWarning(result.message)
-                        }
                         throw new Error(result.message || "Aconteceu algum erro desconhecido");
                     }
 
-                    setLoading(false);
-
-                    setMessageModalWarning(result.message)
+                    setMessageModalWarning(result.message || 'Pagamento processado com sucesso.')
                     setCardInfo({
                         number: '',
                         expiry: '',
@@ -1002,16 +974,15 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                     });
                     // Feche o modal e faça o que for necessário após o sucesso
                 } catch (error) {
-                    // AQUI
+                    const message = error instanceof Error ? error.message : 'Não foi possível processar o cartão.';
+                    setMessageModalWarning2(
+                        message.includes("Informe o endereço do titular do cartão.")
+                            ? "Informe um CEP válido."
+                            : message,
+                    )
+                } finally {
+                    cardRequestInFlight.current = false;
                     setLoading(false);
-                    // Verificando se o erro é o CEP
-                    if ("Informe o endereço do titular do cartão.".includes(error.message)) {
-                        error.message = "Informe um CEP válido."
-                    }
-
-                    setMessageModalWarning2(`${error.message}`)
-                    // Lide com erros de forma apropriada
-
                 }
 
             }
@@ -1052,34 +1023,33 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
     return (
         <>
             <TermModal {...dataModalProps} />
-            <ResponseModal message={messageModalWarning} />
+            <ResponseModal message={messageModalWarning} onClose={() => {
+                setMessageModalWarning("")
+                onClose()
+                void hydratePage()
+            }} />
             <ResponseModal2 message={messageModalWarning2} handleModalClose={() => {
                 setMessageModalWarning2("")
-                window.location.reload()
+                void hydratePage()
             }} />
-            <div className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50'>
-                <div className='relative bg-white p-6 rounded-lg shadow-lg w-full max-w-lg overflow-auto h-[90%]'>
-                    <button
-                        onClick={() => {
-                            setCardInfo({
-                                number: '',
-                                expiry: '',
-                                cvc: '',
-                                name: '',
-                                focus: '',
-                            })
-                            setStep(1)
-
-                            onClose()
-                        }}
-                        className='flex justify-center font-bold text-center rounded-full absolute top-2 right-2 w-7 h-7 text-white bg-red-500'
-                    >
-                        <span>x</span>
-                    </button>
+            <Modal
+                open={isModalOpen && !dataModalProps.isOpen && !isConfirmationOpen && !isLoading && !messageModalWarning && !messageModalWarning2}
+                onClose={() => {
+                    if (isLoading) return
+                    setCardInfo({ number: '', expiry: '', cvc: '', name: '', focus: '' })
+                    setStep(1)
+                    onClose()
+                }}
+                title={step === 1 ? 'Dados do titular' : 'Dados do cartão'}
+                description="Preencha os dados com atenção para concluir o pagamento."
+                className="max-w-lg"
+            >
                     {step === 2 && (
                         <button
+                            type="button"
+                            aria-label="Voltar aos dados do titular"
                             onClick={() => setStep(1)}
-                            className='flex justify-center font-bold text-center absolute top-2 left-2 px-1 py-[0.5px] text-white bg-red-500 rounded-xl'
+                            className='mb-4 inline-flex min-h-11 items-center justify-center rounded border border-[var(--cieps-line)] px-4 py-2 font-bold text-[var(--cieps-blue)]'
                         >
                             <span>VOLTAR</span>
                         </button>
@@ -1094,6 +1064,8 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                     className='text-black mb-2 p-2 border rounded'
                                     type="text"
                                     name="name"
+                                    aria-label="Nome completo do titular"
+                                    autoComplete="name"
                                     placeholder="Nome Completo"
                                     value={personalInfo.name}
                                     onChange={handlePersonalInfoChange}
@@ -1102,6 +1074,8 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                     className='text-black mb-2 p-2 border rounded'
                                     type="email"
                                     name="email"
+                                    aria-label="E-mail do titular"
+                                    autoComplete="email"
                                     placeholder="Email"
                                     value={personalInfo.email}
                                     onChange={handlePersonalInfoChange}
@@ -1110,6 +1084,8 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                     className='text-black mb-2 p-2 border rounded'
                                     type="tel"
                                     name="cpfCnpj"
+                                    aria-label="CPF do titular"
+                                    inputMode="numeric"
                                     placeholder="CPF"
                                     value={personalInfo.cpfCnpj}
                                     onChange={handlePersonalInfoChange}
@@ -1118,6 +1094,9 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                     className='text-black mb-2 p-2 border rounded'
                                     type="tel"
                                     name="postalCode"
+                                    aria-label="CEP do titular"
+                                    inputMode="numeric"
+                                    autoComplete="postal-code"
                                     placeholder="CEP"
                                     value={personalInfo.postalCode}
                                     onChange={handlePersonalInfoChange}
@@ -1126,6 +1105,8 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                     className='text-black mb-2 p-2 border rounded'
                                     type="tel"
                                     name="addressNumber"
+                                    aria-label="Número da residência"
+                                    inputMode="numeric"
                                     placeholder="Número da Residência"
                                     value={personalInfo.addressNumber}
                                     onChange={handlePersonalInfoChange}
@@ -1134,6 +1115,8 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                     className='text-black mb-2 p-2 border rounded'
                                     type="tel"
                                     name="phone"
+                                    aria-label="Telefone do titular"
+                                    autoComplete="tel"
                                     placeholder="DDD + Telefone"
                                     value={personalInfo.phone}
                                     onChange={handlePersonalInfoChange}
@@ -1166,8 +1149,11 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                 <div className='flex flex-col text-black space-y-3'>
                                     <input
                                         className='text-black mb-2 p-2 border rounded'
-                                        type="number"
+                                        type="text"
                                         name="number"
+                                        aria-label="Número do cartão"
+                                        inputMode="numeric"
+                                        autoComplete="cc-number"
                                         placeholder="Número do Cartão"
                                         value={cardInfo.number}
                                         onChange={handleCardInfoChange}
@@ -1177,6 +1163,8 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                         className='text-black mb-2 p-2 border rounded'
                                         type="text"
                                         name="name"
+                                        aria-label="Nome impresso no cartão"
+                                        autoComplete="cc-name"
                                         placeholder="Nome no Cartão"
                                         value={cardInfo.name}
                                         onChange={handleCardInfoChange}
@@ -1186,6 +1174,9 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                         className='text-black mb-2 p-2 border rounded'
                                         type="text"
                                         name="expiry"
+                                        aria-label="Validade do cartão"
+                                        inputMode="numeric"
+                                        autoComplete="cc-exp"
                                         placeholder="Data Vencimento"
                                         value={cardInfo.expiry}
                                         onChange={handleCardInfoChange}
@@ -1193,8 +1184,11 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                     />
                                     <input
                                         className='text-black mb-2 p-2 border rounded'
-                                        type="number"
+                                        type="text"
                                         name="cvc"
+                                        aria-label="Código de segurança do cartão"
+                                        inputMode="numeric"
+                                        autoComplete="cc-csc"
                                         placeholder="Número CVC"
                                         value={cardInfo.cvc}
                                         onChange={handleCardInfoChange}
@@ -1218,7 +1212,7 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
 
                                                 dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.paymentConfig.precos.parcelamentos?.map((value) => {
                                                     return (
-                                                        <div key={value.codigo} className={`p-5 cursor-pointer ${value.codigo == idPagamento ? 'bg-red-600' : "bg-yellow-100"}`} onClick={() => {
+                                                        <button type="button" key={value.codigo} aria-pressed={value.codigo == idPagamento} className={`w-full cursor-pointer p-5 text-left ${value.codigo == idPagamento ? 'bg-[var(--cieps-red)] text-white' : "bg-[rgba(239,159,39,.16)] text-[var(--cieps-ink)]"}`} onClick={() => {
                                                             handleIdPagamento(value.codigo)
                                                             setTextoPagametoEscolhido(
                                                                 `Você escolheu realizar o pagamento em ${value.totalParcelas} parcelas de R$ ${value.valorCadaParcela.toFixed(2)}, totalizando R$${(value.valorCadaParcela * value.totalParcelas).toFixed(2)}`
@@ -1234,7 +1228,7 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                                                             <h1>
                                                                 Quero realizar o pagamento em <span className='font-bold'>{value.totalParcelas} parcelas de R${value.valorCadaParcela.toFixed(2)}</span>, totalizando <span className='font-bold'>R${(value.valorCadaParcela * value.totalParcelas).toFixed(2)}</span>.
                                                             </h1>
-                                                        </div>
+                                                        </button>
                                                     )
                                                 })
                                             }
@@ -1251,94 +1245,47 @@ const PaymentForm = ({ isModalOpen, onClose, dataPaymentConfig, hydratePage }: {
                             </form>
                         </div>
                     )}
-                </div>
-            </div>
+            </Modal>
 
             {/* Modal de Confirmação */}
-            {isConfirmationOpen && (
-                <div className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 px-2'>
-                    <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-lg'>
-                        <h2 className='text-center font-bold text-[#3e4095] text-[20px] mb-5'>Confirmar Pagamento</h2>
-                        <p className='text-black'>{textoPagamentoEscolhido}.</p>
-                        <div className='flex justify-center space-x-4'>
-                            <button
-                                onClick={handleConfirm}
-                                className='bg-blue-500 text-white py-2 px-4 rounded font-bold'
-                            >
-                                Sim
-                            </button>
-                            <button
-                                onClick={handleCancel}
-                                className='bg-red-500 text-white py-2 px-4 rounded font-bold'
-                            >
-                                Não
-                            </button>
-                        </div>
-                    </div>
+            <Modal open={isConfirmationOpen} onClose={handleCancel} title="Confirmar pagamento">
+                <StatusBanner tone="warning" title="Confira a opção selecionada">{textoPagamentoEscolhido}.</StatusBanner>
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <Button variant="ghost" onClick={handleCancel}>Voltar</Button>
+                    <Button onClick={handleConfirm}>Continuar</Button>
                 </div>
-            )}
+            </Modal>
 
             {/* Loading Spinner */}
-            {isLoading && (
-                <div className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50'>
-                    <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-lg'>
-                        <h2 className='text-center font-bold text-[#3e4095] text-[20px] mb-5'>Processando...</h2>
-                        <div className='flex justify-center'>
-                            <div className='spinner-border animate-spin' role='status'>
-                                <span className='sr-only'>Loading...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Modal open={isLoading} onClose={() => undefined} title="Processando pagamento" description="Não feche esta janela.">
+                <AsyncStatePanel status="loading" loadingTitle="Enviando os dados com segurança" />
+            </Modal>
         </>
     );
 };
 
-const ResponseModal = ({ message }: { message: string }) => {
+const ResponseModal = ({ message, onClose }: { message: string; onClose: () => void }) => {
     if (!message) {
         return;
     }
-    return (
-        <div className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[100]'>
-            <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-lg'>
-                <p className='text-center mb-5 text-black'>{message}</p>
-                <div className='flex justify-center space-x-4'>
-                    <button
-                        onClick={() => { window.location.reload(); }}
-                        className='bg-gray-500 text-white py-2 px-4 rounded font-bold'
-                    >
-                        Recarregar Página
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+    return <Modal open onClose={onClose} title="Pagamento atualizado">
+        <StatusBanner tone="success" title="Operação concluída">{message}</StatusBanner>
+        <Button className="mt-5" full onClick={onClose}>Continuar</Button>
+    </Modal>;
 };
 
 const ResponseModal2 = ({ handleModalClose, message }: { handleModalClose, message: string }) => {
     if (!message) {
         return;
     }
-    return (
-        <div className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[100]'>
-            <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-lg'>
-                <p className='text-center mb-5 text-black'>{message}</p>
-                <div className='flex justify-center space-x-4'>
-                    <button
-                        onClick={handleModalClose}
-                        className='bg-gray-500 text-white py-2 px-4 rounded font-bold'
-                    >
-                        Fechar
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+    return <Modal open onClose={handleModalClose} title="Pagamento não concluído">
+        <StatusBanner tone="error" title="Revise os dados e tente novamente">{message}</StatusBanner>
+        <Button className="mt-5" full onClick={handleModalClose}>Voltar</Button>
+    </Modal>;
 };
 
 const CardPagamentos = ({ eventId, type, data_formatada, invoiceNumber, status, description, valor, invoiceUrl }: {
-    eventId: string, type: string, data_formatada: any, invoiceNumber: string, status: string, description: string, valor: number, invoiceUrl: string
+    eventId: string, type: string, data_formatada: string, invoiceNumber: string, status: string, description: string, valor: number, invoiceUrl: string
 }) => {
     const [typeText, setTypeText] = useState<string>("CARREGANDO ATIVIDADE")
 
@@ -1346,7 +1293,7 @@ const CardPagamentos = ({ eventId, type, data_formatada, invoiceNumber, status, 
         async function fetchData() {
             try {
                 if (type == "activity" && typeText == "CARREGANDO ATIVIDADE") {
-                    const response = await fetch(`/api/get/atividadeNomePeloId/${eventId}`, {
+                    const response = await fetchWithTimeout(`/api/get/atividadeNomePeloId/${eventId}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1364,9 +1311,8 @@ const CardPagamentos = ({ eventId, type, data_formatada, invoiceNumber, status, 
 
                     setTypeText(responseJson.data)
                 }
-            } catch (error) {
+            } catch {
                 setTypeText("ERRO AO CARREGAR NOME")
-                console.error('Erro ao buscar dados:', error);
             }
         }
 

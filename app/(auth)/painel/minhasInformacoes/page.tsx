@@ -14,6 +14,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import './style.css';
+import { AsyncStatePanel } from '@/components/cieps';
+import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
 
 const MinhasInformacoes = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -21,11 +23,13 @@ const MinhasInformacoes = () => {
   const [DATA, setData] = useState<IUser["informacoes_usuario"] | undefined>(undefined);
   const [message, setMessage] = useState<string | undefined>(undefined);
   const [isModal, setIsModal] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [requestVersion, setRequestVersion] = useState(0);
 
     useEffect(() => {
         const enviarRequisicaoGet = async () => {
             try {
-                const response = await fetch('/api/get/usuariosConfig', {
+                const response = await fetchWithTimeout('/api/get/usuariosConfig', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -37,16 +41,17 @@ const MinhasInformacoes = () => {
                 }
         
                 const responseData: IUser["informacoes_usuario"] = await response.json();
-        setData(responseData);
-            } catch (error) {
-                console.error('Erro ao enviar a requisição GET:', error);
+                setData(responseData);
+                setLoadError(null);
+            } catch {
+                setLoadError('Não foi possível consultar suas informações agora.');
       } finally {
         setLoading(false);
             }
         };
     
         enviarRequisicaoGet();
-    }, []);
+    }, [requestVersion]);
 
   const closeModalMessage = (e: number) => {
     setIsModal(e === 0);
@@ -62,7 +67,7 @@ const MinhasInformacoes = () => {
     try {
       setLoadingModal(true);
       
-            const response = await fetch('/api/put/usuarioConfig', {
+            const response = await fetchWithTimeout('/api/put/usuarioConfig', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -84,8 +89,9 @@ const MinhasInformacoes = () => {
                 ...prev,
                 ...update
       }));
-    } catch (erro) {
-      console.log(erro);
+    } catch {
+      setMessage('Não foi possível salvar a alteração. Tente novamente.');
+      setIsModal(true);
     } finally {
       setLoadingModal(false);
     }
@@ -94,13 +100,11 @@ const MinhasInformacoes = () => {
     return (
     <div className="informacoes-main">
       <WarningModal 
-        message={message} 
+        message={message ?? ''}
         isModal={isModal} 
         closeModal={closeModalMessage} 
         textButton={""} 
-        onClose={function (): void {
-                throw new Error("Function not implemented.")
-        }} 
+        onClose={() => undefined}
       />
       
             <LoadingModal isLoading={loadingModal} />
@@ -136,6 +140,17 @@ const MinhasInformacoes = () => {
                 <span></span>
                 </div>
             </div>
+          ) : loadError ? (
+            <AsyncStatePanel
+              status="error"
+              errorTitle="Informações indisponíveis"
+              message={loadError}
+              onRetry={() => {
+                setLoadError(null);
+                setLoading(true);
+                setRequestVersion((version) => version + 1);
+              }}
+            />
           ) : (
             <div className="details-container">
               <div className="details-icon">
@@ -149,7 +164,7 @@ const MinhasInformacoes = () => {
       </section>
 
       {/* Seção de formulários */}
-      <section className="forms-section">
+      {!loadError && <section className="forms-section">
         <div className="forms-container">
           <FormCard 
             label="Nome" 
@@ -190,7 +205,7 @@ const MinhasInformacoes = () => {
             icon={<Phone size={20} />}
           />
         </div>
-      </section>
+      </section>}
     </div>
   );
 };
@@ -264,8 +279,9 @@ const FormCard = ({
             </div>
       <div className="form-content">
         <div className="form-group">
-          <label className="form-label">{label}</label>
+          <label htmlFor={`profile-${nomeCampo}`} className="form-label">{label}</label>
                     <input
+                        id={`profile-${nomeCampo}`}
                         type={type}
                         placeholder={placeholder}
             className="form-input"

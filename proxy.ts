@@ -7,10 +7,9 @@ import { ObjectId } from 'bson';
 import { IUser } from '@/lib/types/user/user.t';
 
 const protectedRoutes = [
-  '/suaInscricaoFoiConfirmada',
   '/painel',
-  '/updateData',
   '/pagamentos',
+  '/qrCode',
 ];
 function isProtectedRoute(pathname) {
   return protectedRoutes.some((route) => pathname.startsWith(route));
@@ -35,12 +34,11 @@ export async function proxy(req) {
     return NextResponse.next();
   }
 
-  // 3. Verifica se é uma rota protegida (Se NÃO FOR painel ou pagamentos, libera geral)
-  // Fazemos isso ANTES de checar a sessão, para que rotas públicas sejam sempre públicas.
-  const isPainel = path.startsWith("/painel");
+  // 3. Fazemos a classificação antes de consultar a sessão para manter
+  // todas as rotas públicas livres de dependências de autenticação.
   const isPagamentos = path.startsWith("/pagamentos");
 
-  if (!isPainel && !isPagamentos) {
+  if (!isProtectedRoute(path)) {
     return NextResponse.next();
   }
 
@@ -50,7 +48,8 @@ export async function proxy(req) {
 
   // 4. Se não tem sessão em rota protegida, força o login
   if (!session) {
-    return auth0.startInteractiveLogin({ returnTo: new URL("/painel", req.nextUrl.origin).toString() });
+    const returnTo = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+    return auth0.startInteractiveLogin({ returnTo });
   }
 
   // 5. Usuário está logado. Vamos buscar os dados.
@@ -95,6 +94,6 @@ export async function proxy(req) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!_next/|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };

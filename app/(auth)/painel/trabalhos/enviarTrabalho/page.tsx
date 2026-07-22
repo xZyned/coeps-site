@@ -9,6 +9,8 @@ import { isTodayBetweenDates } from '@/lib/isTodayBetweenDates';
 // --- Função Auxiliar para Retry com Tipagem Correta ---
 import { Upload, FileText, CheckCircle, AlertCircle, Loader, Info, UserPlus, Trash2, BookOpen, Target, Microscope, MessageSquare, Award, Hash, BookMarked, Save, ArrowLeft, X, Plus } from 'lucide-react';
 import { IAcademicWorksProps } from '@/lib/types/academicWorks/academicWorks.t';
+import { AsyncStatePanel, StatusBanner } from '@/components/cieps';
+import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
 import './style.css';
 
 // Interface do Autor simplificada: O front-end não precisa saber quem é pagante.
@@ -67,7 +69,7 @@ const formatFileSize = (bytes: number): string => {
 async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(url, options);
+      const response = await fetchWithTimeout(url, options, 60_000);
       if (response.status >= 500) {
         throw new Error(`Server error: ${response.status}`);
       }
@@ -101,7 +103,7 @@ function SubmissionForm() {
   const [currentStep, setCurrentStep] = useState<'dados' | 'topicos'>('dados');
   const [titulo, setTitulo] = useState('');
   const [modalidade, setModalidade] = useState<IAcademicWorksProps["modalidades"][0]>();
-  const [autores, setAutores] = useState<Autor[]>([{ id: Date.now(), nome: '', email: '', cpf: '', isOrientador: false }]);
+  const [autores, setAutores] = useState<Autor[]>([{ id: 0, nome: '', email: '', cpf: '', isOrientador: false }]);
 
   // MODIFICAÇÃO: Estado para múltiplos arquivos
   const [arquivos, setArquivos] = useState<ArquivoUpload[]>([]);
@@ -109,6 +111,7 @@ function SubmissionForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [trabalhosProps, setTrabalhosProps] = useState<IAcademicWorksProps | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [topicos, setTopicos] = useState<TopicosTrabalho>({
     resumo: '', introducao: '', objetivo: '', metodo: '', discussaoResultados: '', conclusao: '', palavrasChave: '', referencias: ''
   });
@@ -116,6 +119,8 @@ function SubmissionForm() {
   const [isUserLogadoPagante, setIsUserLogadoPagante] = useState<boolean | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [isValidatingAuthors, setIsValidatingAuthors] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [requestVersion, setRequestVersion] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,10 +129,9 @@ function SubmissionForm() {
     const verificarStatusUsuario = async () => {
       setIsLoadingStatus(true);
       try {
-        const responseTrabalhosProps = await fetch(`/api/get/trabalhosConfig/`)
+        const responseTrabalhosProps = await fetchWithTimeout(`/api/get/trabalhosConfig/`)
         if (!responseTrabalhosProps.ok) {
           const error: { message: string } = await responseTrabalhosProps.json()
-          alert(error.message)
           throw new Error(error.message)
         }
 
@@ -135,7 +139,7 @@ function SubmissionForm() {
         setTrabalhosProps(responseTrabalhosJson)
         setModalidade(responseTrabalhosJson.modalidades?.[0])
 
-        const response = await fetch('/api/get/verificacaoUsuario');
+        const response = await fetchWithTimeout('/api/get/verificacaoUsuario');
         if (!response.ok) throw new Error('Falha ao verificar o status do usuário.');
         const data = await response.json();
         const temPagamento = data.pagamento?.situacao === 1 || data.pagamento?.situacao_animacao === 1;
@@ -151,14 +155,14 @@ function SubmissionForm() {
         });
 
       } catch (error) {
-        //router.push('/auth/login?returnTo=/upload');
+        setLoadError(error instanceof Error ? error.message : 'Não foi possível preparar o formulário.');
       } finally {
         setIsLoadingStatus(false)
       }
     };
     verificarStatusUsuario()
     //checkAuthStatus();
-  }, []);
+  }, [requestVersion]);
 
   // Função para atualizar progresso de um arquivo específico
   const updateFileProgress = (fileId: string, progress: number, status: ArquivoUpload['status'], error?: string) => {
@@ -309,7 +313,7 @@ function SubmissionForm() {
     setFormError(null);
 
     try {
-      const response = await fetch('/api/post/submitWork', {
+      const response = await fetchWithTimeout('/api/post/submitWork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -332,8 +336,7 @@ function SubmissionForm() {
       }
 
       return true;
-    } catch (error) {
-      console.error('Erro na validação de autores:', error);
+    } catch {
       setFormError('Erro ao validar autores. Tente novamente.');
       return false;
     } finally {
@@ -344,6 +347,7 @@ function SubmissionForm() {
   const handleDadosSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setFormSuccess(null);
 
     // Validações básicas
     if (!titulo || !modalidade || autores.some(a => !a.nome || !a.email || !a.cpf)) {
@@ -422,7 +426,7 @@ function SubmissionForm() {
       // MODIFICAÇÃO: Enviar array de fileIds em vez de um único fileId
       const fileIds = arquivosCompletos.map(arquivo => arquivo.id);
 
-      const response = await fetch('/api/post/submitWork', {
+      const response = await fetchWithTimeout('/api/post/submitWork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -440,7 +444,7 @@ function SubmissionForm() {
       }
 
       const result = await response.json();
-      alert(result.message || 'Trabalho submetido com sucesso!');
+      setFormSuccess(result.message || 'Trabalho submetido com sucesso!');
 
       // Reset do formulário
       setTitulo('');
@@ -452,7 +456,6 @@ function SubmissionForm() {
       setCurrentStep('dados');
 
     } catch (error) {
-      console.error('Erro na submissão:', error);
       setFormError(error instanceof Error ? error.message : 'Erro desconhecido na submissão.');
     } finally {
       setIsSubmitting(false);
@@ -461,8 +464,22 @@ function SubmissionForm() {
 
 
   //
-  if (!trabalhosProps) {
-    return <h1 className='periodo-fechado'>Carregando configurações de trabalhos...</h1>
+  if (isLoadingStatus) {
+    return <AsyncStatePanel status="loading" loadingTitle="Carregando configurações de trabalhos" />
+  }
+  if (loadError || !trabalhosProps) {
+    return (
+      <AsyncStatePanel
+        status="error"
+        errorTitle="Formulário indisponível"
+        message={loadError ?? 'As configurações de submissão retornaram incompletas.'}
+        onRetry={() => {
+          setLoadError(null);
+          setIsLoadingStatus(true);
+          setRequestVersion((version) => version + 1);
+        }}
+      />
+    )
   }
   if (!trabalhosProps.isOpen || !isTodayBetweenDates(trabalhosProps.data_inicio_submissao, trabalhosProps.data_limite_submissao)) {
     return (
@@ -490,36 +507,36 @@ function SubmissionForm() {
         <form onSubmit={handleTopicosSubmit} className="space-y-6">
           <div className="topicos-grid">
             <div className="md:col-span-2">
-              <label className="form-label"><BookOpen className="inline mr-2" size={16} />Resumo</label>
-              <textarea value={topicos.resumo} onChange={(e) => handleTopicoChange('resumo', e.target.value)} className="form-textarea" rows={4} placeholder="Digite o resumo do seu trabalho..." />
+              <label htmlFor="topic-summary" className="form-label"><BookOpen className="inline mr-2" size={16} />Resumo</label>
+              <textarea id="topic-summary" value={topicos.resumo} onChange={(e) => handleTopicoChange('resumo', e.target.value)} className="form-textarea" rows={4} placeholder="Digite o resumo do seu trabalho..." />
             </div>
             <div className="md:col-span-2">
-              <label className="form-label"><BookOpen className="inline mr-2" size={16} />Introdução</label>
-              <textarea value={topicos.introducao} onChange={(e) => handleTopicoChange('introducao', e.target.value)} className="form-textarea" rows={4} placeholder="Digite a introdução do seu trabalho..." />
+              <label htmlFor="topic-introduction" className="form-label"><BookOpen className="inline mr-2" size={16} />Introdução</label>
+              <textarea id="topic-introduction" value={topicos.introducao} onChange={(e) => handleTopicoChange('introducao', e.target.value)} className="form-textarea" rows={4} placeholder="Digite a introdução do seu trabalho..." />
             </div>
             <div>
-              <label className="form-label"><Target className="inline mr-2" size={16} />Objetivo</label>
-              <textarea value={topicos.objetivo} onChange={(e) => handleTopicoChange('objetivo', e.target.value)} className="form-textarea" rows={3} placeholder="Qual é o objetivo do seu trabalho?" />
+              <label htmlFor="topic-objective" className="form-label"><Target className="inline mr-2" size={16} />Objetivo</label>
+              <textarea id="topic-objective" value={topicos.objetivo} onChange={(e) => handleTopicoChange('objetivo', e.target.value)} className="form-textarea" rows={3} placeholder="Qual é o objetivo do seu trabalho?" />
             </div>
             <div>
-              <label className="form-label"><Microscope className="inline mr-2" size={16} />Método</label>
-              <textarea value={topicos.metodo} onChange={(e) => handleTopicoChange('metodo', e.target.value)} className="form-textarea" rows={4} placeholder="Descreva a metodologia utilizada..." />
+              <label htmlFor="topic-method" className="form-label"><Microscope className="inline mr-2" size={16} />Método</label>
+              <textarea id="topic-method" value={topicos.metodo} onChange={(e) => handleTopicoChange('metodo', e.target.value)} className="form-textarea" rows={4} placeholder="Descreva a metodologia utilizada..." />
             </div>
             <div>
-              <label className="form-label"><MessageSquare className="inline mr-2" size={16} />Discussão e Resultados</label>
-              <textarea value={topicos.discussaoResultados} onChange={(e) => handleTopicoChange('discussaoResultados', e.target.value)} className="form-textarea" rows={4} placeholder="Apresente os resultados e discussão..." />
+              <label htmlFor="topic-results" className="form-label"><MessageSquare className="inline mr-2" size={16} />Discussão e resultados</label>
+              <textarea id="topic-results" value={topicos.discussaoResultados} onChange={(e) => handleTopicoChange('discussaoResultados', e.target.value)} className="form-textarea" rows={4} placeholder="Apresente os resultados e discussão..." />
             </div>
             <div>
-              <label className="form-label"><Award className="inline mr-2" size={16} />Conclusão</label>
-              <textarea value={topicos.conclusao} onChange={(e) => handleTopicoChange('conclusao', e.target.value)} className="form-textarea" rows={3} placeholder="Quais são as conclusões do trabalho?" />
+              <label htmlFor="topic-conclusion" className="form-label"><Award className="inline mr-2" size={16} />Conclusão</label>
+              <textarea id="topic-conclusion" value={topicos.conclusao} onChange={(e) => handleTopicoChange('conclusao', e.target.value)} className="form-textarea" rows={3} placeholder="Quais são as conclusões do trabalho?" />
             </div>
             <div>
-              <label className="form-label"><Hash className="inline mr-2" size={16} />Palavras-chave</label>
-              <textarea value={topicos.palavrasChave} onChange={(e) => handleTopicoChange('palavrasChave', e.target.value)} className="form-textarea" rows={2} placeholder="Liste as palavras-chave separadas por vírgula..." />
+              <label htmlFor="topic-keywords" className="form-label"><Hash className="inline mr-2" size={16} />Palavras-chave</label>
+              <textarea id="topic-keywords" value={topicos.palavrasChave} onChange={(e) => handleTopicoChange('palavrasChave', e.target.value)} className="form-textarea" rows={2} placeholder="Liste as palavras-chave separadas por vírgula..." />
             </div>
             <div>
-              <label className="form-label"><BookMarked className="inline mr-2" size={16} />Referências</label>
-              <textarea value={topicos.referencias} onChange={(e) => handleTopicoChange('referencias', e.target.value)} className="form-textarea" rows={4} placeholder="Liste as referências bibliográficas..." />
+              <label htmlFor="topic-references" className="form-label"><BookMarked className="inline mr-2" size={16} />Referências</label>
+              <textarea id="topic-references" value={topicos.referencias} onChange={(e) => handleTopicoChange('referencias', e.target.value)} className="form-textarea" rows={4} placeholder="Liste as referências bibliográficas..." />
             </div>
           </div>
 
@@ -543,21 +560,13 @@ function SubmissionForm() {
     );
   }
 
-  if (isLoadingStatus) {
-    return (
-      <div className="loading-container">
-        <Loader className="loading-spinner h-12 w-12" />
-        <p className="loading-text">Carregando configurações...</p>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={handleDadosSubmit} className="formulario-principal">
       <div className="form-header">
         <h1 className="form-title">Submissão de Trabalho</h1>
         <p className="form-subtitle">Preencha os dados abaixo e anexe os arquivos do seu trabalho.</p>
       </div>
+      {formSuccess && <StatusBanner tone="success" title="Submissão concluída" className="mb-6">{formSuccess}</StatusBanner>}
 
       <div className="space-y-6">
         <div className="form-group">
@@ -601,9 +610,9 @@ function SubmissionForm() {
 
         {/* NOVA SEÇÃO: Upload de múltiplos arquivos */}
         <div className="form-group">
-          <label className="form-label">
+          <div className="form-label">
             Arquivos do Trabalho * (máximo {modalidade.postagens_maximas} arquivos)
-          </label>
+          </div>
 
           {/* Área de upload */}
           <div className="upload-area">
@@ -669,6 +678,7 @@ function SubmissionForm() {
                         type="button"
                         onClick={() => removeFile(arquivo.id)}
                         className="remover-arquivo"
+                        aria-label={`Remover arquivo ${arquivo.originalName}`}
                       >
                         <X size={16} />
                       </button>
@@ -709,12 +719,12 @@ function SubmissionForm() {
         {/* Seção de autores (mantida igual) */}
         <div className="form-group">
           <div className="flex items-center justify-between mb-4">
-            <label className="form-label">
+            <span className="form-label">
               Autores * (máximo {modalidade?.autores_por_trabalho})
-            </label>
-            <label className="form-label">
+            </span>
+            <span className="form-label">
               Orientadores * (máximo {modalidade?.maximo_orientadores})
-            </label>
+            </span>
             <button
               type="button"
               onClick={handleAddAutor}
@@ -736,6 +746,7 @@ function SubmissionForm() {
                       type="button"
                       onClick={() => handleRemoveAutor(autor.id)}
                       className="remover-autor"
+                      aria-label={`Remover autor ${index + 1}`}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -745,6 +756,7 @@ function SubmissionForm() {
                 <div className="autor-grid">
                   <input
                     type="text"
+                    aria-label={`Nome completo do autor ${index + 1}`}
                     placeholder="Nome completo"
                     value={autor.nome}
                     onChange={(e) => handleAutorChange(autor.id, 'nome', e.target.value)}
@@ -752,6 +764,7 @@ function SubmissionForm() {
                   />
                   <input
                     type="email"
+                    aria-label={`E-mail do autor ${index + 1}`}
                     placeholder="E-mail"
                     value={autor.email}
                     onChange={(e) => handleAutorChange(autor.id, 'email', e.target.value)}
@@ -759,6 +772,7 @@ function SubmissionForm() {
                   />
                   <input
                     type="text"
+                    aria-label={`CPF do autor ${index + 1}`}
                     placeholder="CPF"
                     value={autor.cpf}
                     onChange={(e) => handleAutorChange(autor.id, 'cpf', e.target.value)}
@@ -770,6 +784,7 @@ function SubmissionForm() {
                   <label className="autor-checkbox">
                     <input
                       type="checkbox"
+                      aria-label={`Marcar autor ${index + 1} como orientador`}
                       checked={autor.isOrientador}
                       onChange={() => handleOrientadorChange(autor.id)}
                       className="mr-2 rounded focus:ring-2 focus:ring-blue-500"
