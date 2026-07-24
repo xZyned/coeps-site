@@ -7,7 +7,7 @@ import { Paperclip, Loader, CheckCircle, AlertCircle, X, Upload, Plus } from "lu
 import DOMPurify from "dompurify";
 import { useRouter } from "next/navigation";
 import { AsyncStatePanel, Button, Modal, PageShell, StatusBanner } from '@/components/cieps';
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 //
 //
 // Função para gerar um nome de arquivo único, evitando conflitos no armazenamento.
@@ -62,11 +62,9 @@ export default function Page({ params }: { params: Promise<{ trabalhoId: string 
 
                 const { trabalhoId } = await params;
                 const response = await fetchWithTimeout(`/api/get/usuariosTrabalhos/${trabalhoId}`);
-                if (!response.ok) {
-                    const errMessage: { message: string } = await response.json();
-                    throw new Error(errMessage.message || 'Trabalho não encontrado.');
-                }
-                const { data }: { data: IAcademicWorks } = await response.json();
+                const payload = await readJsonResponse<{ data: IAcademicWorks }>(response);
+                if (!payload) throw new Error('A API retornou uma resposta vazia.');
+                const { data } = payload;
                 if (active) setTrabalhoData(data);
             }
             catch (error) {
@@ -145,12 +143,8 @@ const TrabalhoComponent: React.FC<{ trabalho: IAcademicWorks, setTrabalhoData: R
             const response = await fetchWithRetry('/api/post/uploadBlobSingle', { method: 'POST', body: formData });
             updateFileProgress(fileId, 70, 'uploading');
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Erro no upload: ${response.statusText}`);
-            }
-
-            const result = await response.json();
+            const result = await readJsonResponse<any>(response);
+            if (!result) throw new Error('A API de upload retornou uma resposta vazia.');
             if (!result.data || !result.data._id) throw new Error('A API de upload não retornou um ID de arquivo válido.');
 
             updateFileProgress(fileId, 100, 'completed');
@@ -180,9 +174,8 @@ const TrabalhoComponent: React.FC<{ trabalho: IAcademicWorks, setTrabalhoData: R
                 formData.append('fileName', uniqueFileName);
 
                 const response = await fetchWithRetry('/api/post/uploadBlobChunk', { method: 'POST', body: formData });
-                if (!response.ok) throw new Error(`Erro no upload do chunk ${i + 1}`);
-
-                const result = await response.json();
+                const result = await readJsonResponse<any>(response);
+                if (!result) throw new Error(`A API não confirmou o chunk ${i + 1}.`);
                 chunkIds.push(result.chunkId);
                 updateFileProgress(fileId, ((i + 1) / totalChunks) * 90, 'uploading');
             }
@@ -193,9 +186,8 @@ const TrabalhoComponent: React.FC<{ trabalho: IAcademicWorks, setTrabalhoData: R
                 body: JSON.stringify({ chunkFileName: uniqueFileName, finalFileName: uniqueFileName, chunkIds, totalSize: file.size }),
             });
 
-            if (!reconstructResponse.ok) throw new Error('Erro na reconstrução do arquivo');
-
-            const result = await reconstructResponse.json();
+            const result = await readJsonResponse<any>(reconstructResponse);
+            if (!result) throw new Error('A API de reconstrução retornou uma resposta vazia.');
             if (!result.data || !result.data._id) throw new Error('A API de reconstrução não retornou um ID válido.');
 
             updateFileProgress(fileId, 100, 'completed');
@@ -273,15 +265,12 @@ const TrabalhoComponent: React.FC<{ trabalho: IAcademicWorks, setTrabalhoData: R
         setIsSubmitting(true);
         setFormError(null);
         try {
-            const response = await fetchWithTimeout("/api/put/academicWork/", {
+            const response = await fetchWithTimeout("/api/put/academicWork", {
                 method: "PUT",
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ academicWork: trabalho, newFiles: arquivos })
             });
-            if (!response.ok) {
-                const payload = await response.json().catch(() => ({}));
-                throw new Error(payload?.message || payload?.error || 'Não foi possível enviar a correção.');
-            }
+            await readJsonResponse(response);
             router.push("/painel/trabalhos/");
         } catch (error) {
             setFormError(error instanceof Error ? error.message : 'Não foi possível enviar a correção.');

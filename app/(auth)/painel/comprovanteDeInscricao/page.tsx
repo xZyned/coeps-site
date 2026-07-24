@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Download, FileCheck2 } from 'lucide-react';
 import { AsyncStatePanel, Button } from '@/components/cieps';
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 
 async function requestParticipantName() {
   const response = await fetchWithTimeout('/api/get/usuariosInformacoes', { cache: 'no-store' });
   if (!response.ok) throw new Error('Não foi possível consultar os dados do congressista.');
-  const payload = await response.json();
+  const payload = await readJsonResponse<{
+    data?: { informacoes_usuario?: { nome?: string } };
+  }>(response);
   const name = payload?.data?.informacoes_usuario?.nome;
   if (!name || typeof name !== 'string') throw new Error('O nome do congressista ainda não está disponível.');
   return name;

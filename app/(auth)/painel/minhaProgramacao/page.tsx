@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ICourse, ILecture } from "@/lib/types/events/event.t";
 import { Calendar, Clock, MapPin, Info, X, Loader2 } from 'lucide-react';
 import { AsyncStatePanel } from '@/components/cieps';
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 import './style.css';
 
 export default function MinhaProgramacao() {
@@ -41,7 +41,14 @@ export default function MinhaProgramacao() {
           throw new Error('Falha ao enviar a requisição GET');
         }
 
-        const responseData: { minicursos: ICourse[], palestras: ILecture[] } = await response.json();
+        const responseData = await readJsonResponse<{
+          minicursos: ICourse[];
+          palestras: ILecture[];
+        }>(response);
+
+        if (!responseData) {
+          throw new Error('A API retornou uma resposta vazia.');
+        }
 
         handleIsFetching(false)
         handleData({ "data": organizeData(responseData) })

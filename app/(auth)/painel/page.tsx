@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AreaCongressista } from '@/components/cieps'
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout'
+import { fetchJsonWithTimeout } from '@/lib/client/fetchWithTimeout'
 
 export default function Page() {
   const [userId, setUserId] = useState<string | null>(null)
@@ -12,12 +12,22 @@ export default function Page() {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response = await fetchWithTimeout('/api/get/usuariosInformacoes')
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const data = await response.json()
+        const data = await fetchJsonWithTimeout<{
+          data?: {
+            _id?: string
+            nome?: string
+            name?: string
+            informacoes_usuario?: { nome?: string }
+          }
+        }>('/api/get/usuariosInformacoes')
 
         setUserId(data?.data?._id || null)
-        setNome(data?.data?.nome || data?.data?.name || 'Congressista')
+        setNome(
+          data?.data?.informacoes_usuario?.nome ||
+          data?.data?.nome ||
+          data?.data?.name ||
+          'Congressista'
+        )
       } catch {
         setUserId(null)
         setNome('Congressista')

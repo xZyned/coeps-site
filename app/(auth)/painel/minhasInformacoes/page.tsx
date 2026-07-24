@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import './style.css';
 import { AsyncStatePanel } from '@/components/cieps';
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 
 const MinhasInformacoes = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -40,7 +40,8 @@ const MinhasInformacoes = () => {
                     throw new Error('Falha ao enviar a requisição GET');
                 }
         
-                const responseData: IUser["informacoes_usuario"] = await response.json();
+                const responseData = await readJsonResponse<IUser["informacoes_usuario"]>(response);
+                if (!responseData) throw new Error('A API retornou uma resposta vazia.');
                 setData(responseData);
                 setLoadError(null);
             } catch {
@@ -75,7 +76,7 @@ const MinhasInformacoes = () => {
                 body: JSON.stringify(update),
             });
       
-      const responseJson = await response.json();
+      const responseJson = (await readJsonResponse<{ message?: string }>(response)) ?? {};
       
             if (!response.ok) {
         setMessage(responseJson.message || "Ocorreu um erro desconhecido. Recarregue a página e tente novamente. Caso o erro continue, entre em contato com a equipe CIEPS.");

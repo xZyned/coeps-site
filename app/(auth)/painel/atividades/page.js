@@ -6,7 +6,7 @@ import { DateTime } from "luxon"
 import Link from "next/link"
 import { DollarSign, Users, Calendar, Info, XCircle, CheckCircle, Clock, BookOpen, UserCheck, GraduationCap, Presentation, FlaskConical, Music, Award, Gamepad2, Heart, Stethoscope, Sparkles, Brain, Search } from 'lucide-react';
 import { AsyncStatePanel } from '@/components/cieps';
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 import './style.css';
 
 const activityColors = ['#a32d2d', '#185fa5', '#ef9f27', '#1a1a1a'];
@@ -26,7 +26,7 @@ export default function Minicursos() {
             try {
 
                 const response = await fetchWithTimeout('/api/get/atividadesDisponiveis', { cache: 'no-cache' })
-                const jsonResponse = await response.json()
+                const jsonResponse = await readJsonResponse(response)
                 if (!response.ok) {
                     throw new Error(jsonResponse?.message || 'Falha ao consultar atividades')
                 }
@@ -233,7 +233,7 @@ const BannerAtividade = ({ activity, userId, color }) => {
                 body: JSON.stringify({ eventId }),
             });
 
-            const result = await response.json();
+            const result = await readJsonResponse(response);
 
             if (!response.ok) {
                 if (response.status == 403) {
@@ -286,7 +286,7 @@ const BannerAtividade = ({ activity, userId, color }) => {
                 body: JSON.stringify({ eventId }),
             });
 
-            const result = await response.json();
+            const result = await readJsonResponse(response);
 
             if (!response.ok) {
                 if (response.status == 403) {
@@ -331,7 +331,7 @@ const BannerAtividade = ({ activity, userId, color }) => {
                 body: JSON.stringify({ eventId }),
             });
 
-            const result = await response.json();
+            const result = await readJsonResponse(response);
 
             if (!response.ok) {
                 if (response.status == 403) {

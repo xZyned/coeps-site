@@ -10,7 +10,7 @@ import { isTodayBetweenDates } from '@/lib/isTodayBetweenDates';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader, Info, UserPlus, Trash2, BookOpen, Target, Microscope, MessageSquare, Award, Hash, BookMarked, Save, ArrowLeft, X, Plus } from 'lucide-react';
 import { IAcademicWorksProps } from '@/lib/types/academicWorks/academicWorks.t';
 import { AsyncStatePanel, StatusBanner } from '@/components/cieps';
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 import './style.css';
 
 // Interface do Autor simplificada: O front-end não precisa saber quem é pagante.
@@ -129,19 +129,15 @@ function SubmissionForm() {
     const verificarStatusUsuario = async () => {
       setIsLoadingStatus(true);
       try {
-        const responseTrabalhosProps = await fetchWithTimeout(`/api/get/trabalhosConfig/`)
-        if (!responseTrabalhosProps.ok) {
-          const error: { message: string } = await responseTrabalhosProps.json()
-          throw new Error(error.message)
-        }
-
-        const responseTrabalhosJson: IAcademicWorksProps = await responseTrabalhosProps.json()
+        const responseTrabalhosProps = await fetchWithTimeout('/api/get/trabalhosConfig')
+        const responseTrabalhosJson = await readJsonResponse<IAcademicWorksProps>(responseTrabalhosProps)
+        if (!responseTrabalhosJson) throw new Error('A API retornou uma resposta vazia.')
         setTrabalhosProps(responseTrabalhosJson)
         setModalidade(responseTrabalhosJson.modalidades?.[0])
 
         const response = await fetchWithTimeout('/api/get/verificacaoUsuario');
-        if (!response.ok) throw new Error('Falha ao verificar o status do usuário.');
-        const data = await response.json();
+        const data = await readJsonResponse<any>(response);
+        if (!data) throw new Error('A API retornou uma resposta vazia.');
         const temPagamento = data.pagamento?.situacao === 1 || data.pagamento?.situacao_animacao === 1;
         setIsUserLogadoPagante(temPagamento);
 
@@ -184,12 +180,8 @@ function SubmissionForm() {
       const response = await fetchWithRetry('/api/post/uploadBlobSingle', { method: 'POST', body: formData });
       updateFileProgress(fileId, 70, 'uploading');
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erro no upload: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      const result = await readJsonResponse<any>(response);
+      if (!result) throw new Error('A API de upload retornou uma resposta vazia.');
       if (!result.data || !result.data._id) throw new Error('A API de upload não retornou um ID de arquivo válido.');
 
       updateFileProgress(fileId, 100, 'completed');
@@ -219,9 +211,8 @@ function SubmissionForm() {
         formData.append('fileName', uniqueFileName);
 
         const response = await fetchWithRetry('/api/post/uploadBlobChunk', { method: 'POST', body: formData });
-        if (!response.ok) throw new Error(`Erro no upload do chunk ${i + 1}`);
-
-        const result = await response.json();
+        const result = await readJsonResponse<any>(response);
+        if (!result) throw new Error(`A API não confirmou o chunk ${i + 1}.`);
         chunkIds.push(result.chunkId);
         updateFileProgress(fileId, ((i + 1) / totalChunks) * 90, 'uploading');
       }
@@ -232,9 +223,8 @@ function SubmissionForm() {
         body: JSON.stringify({ chunkFileName: uniqueFileName, finalFileName: uniqueFileName, chunkIds, totalSize: file.size }),
       });
 
-      if (!reconstructResponse.ok) throw new Error('Erro na reconstrução do arquivo');
-
-      const result = await reconstructResponse.json();
+      const result = await readJsonResponse<any>(reconstructResponse);
+      if (!result) throw new Error('A API de reconstrução retornou uma resposta vazia.');
       if (!result.data || !result.data._id) throw new Error('A API de reconstrução não retornou um ID válido.');
 
       updateFileProgress(fileId, 100, 'completed');
@@ -322,13 +312,8 @@ function SubmissionForm() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        setFormError(errorData.error || 'Erro na validação dos autores.');
-        return false;
-      }
-
-      const result = await response.json();
+      const result = await readJsonResponse<any>(response);
+      if (!result) throw new Error('A API retornou uma resposta vazia.');
 
       if (!result.temPagante) {
         setFormError('Para prosseguir, pelo menos um dos autores deve estar cadastrado no sistema com pagamento confirmado.');
@@ -438,12 +423,8 @@ function SubmissionForm() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erro ${response.status}`);
-      }
-
-      const result = await response.json();
+      const result = await readJsonResponse<any>(response);
+      if (!result) throw new Error('A API retornou uma resposta vazia.');
       setFormSuccess(result.message || 'Trabalho submetido com sucesso!');
 
       // Reset do formulário

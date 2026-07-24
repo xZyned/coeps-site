@@ -25,7 +25,7 @@ import {
 import './style.css';
 import HtmlSanitizer from '@/app/utils/htmlSanitizer';
 import { AsyncStatePanel, Button, Modal, PageShell, StatusBanner } from '@/components/cieps';
-import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 
 function formatSubmissionDate(value: string) {
     const date = new Date(value)
@@ -56,7 +56,11 @@ export default function Home() {
                 if (!configResponse.ok || !worksResponse.ok) {
                     throw new Error('Falha ao consultar trabalhos')
                 }
-                const [config, works] = await Promise.all([configResponse.json(), worksResponse.json()])
+                const [config, works] = await Promise.all([
+                    readJsonResponse<IAcademicWorksProps>(configResponse),
+                    readJsonResponse<{ data?: IAcademicWorks[] }>(worksResponse)
+                ])
+                if (!config || !works) throw new Error('A API retornou uma resposta vazia')
                 if (!active) return
                 setTrabalhosConfigs(config)
                 setUsuarioTrabalhos(works.data ?? [])
@@ -235,7 +239,7 @@ const TrabalhoPostado: React.FC<{
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ trabalhoId: _id })
             });
-            const result = await response.json().catch(() => ({}));
+            const result = (await readJsonResponse<{ error?: string; message?: string }>(response)) ?? {};
             if (!response.ok) {
                 throw new Error(result.error || result.message || 'Não foi possível excluir o trabalho.');
             }
