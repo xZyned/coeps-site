@@ -29,6 +29,7 @@ import {
   holdWebhookWorkerLeaseUntil,
   ingestWebhookEvent,
   releaseWebhookWorkerLease,
+  resolveReviewedWebhookEvents,
 } from '../../../../lib/payments/webhook-ledger.ts';
 
 export const maxDuration = 60;
@@ -230,6 +231,207 @@ function installmentMatchesSession(session, payment) {
     payment?.installment &&
     String(payment.installment) === String(session.installmentPlan.installmentId),
   );
+}
+
+const STALE_PIX_INSTALLMENT_REPAIR_EVENTS = new Set([
+  'PAYMENT_CREATED',
+  'PAYMENT_CONFIRMED',
+  'PAYMENT_RECEIVED',
+]);
+
+function provisionalInstallmentPlanMatches(left, right) {
+  if (!left || !right) return false;
+  if (String(left.installmentId || '').trim() || String(right.installmentId || '').trim()) {
+    return false;
+  }
+  const leftCount = Number(left.count);
+  const rightCount = Number(right.count);
+  const leftTotal = Number(left.totalValueCentavos);
+  const rightTotal = Number(right.totalValueCentavos);
+  const leftInstallment = Number(left.installmentValueCentavos);
+  const rightInstallment = Number(right.installmentValueCentavos);
+  return Boolean(
+    Number.isInteger(leftCount) &&
+    leftCount >= 2 &&
+    leftCount === rightCount &&
+    Number.isInteger(leftTotal) &&
+    leftTotal >= 0 &&
+    leftTotal === rightTotal &&
+    Number.isInteger(leftInstallment) &&
+    leftInstallment >= 0 &&
+    leftInstallment === rightInstallment,
+  );
+}
+
+function paymentValueSnapshotForMethod(values, method) {
+  const methodValue = (bucket) => {
+    if (!bucket || typeof bucket !== 'object') return null;
+    const value = Number(bucket[method]);
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  };
+  const original = methodValue(values?.original);
+  const desconto = methodValue(values?.desconto);
+  const final = methodValue(values?.final);
+  if (
+    original === null ||
+    desconto === null ||
+    final === null ||
+    original < desconto ||
+    original - desconto !== final
+  ) {
+    return null;
+  }
+  return { original, desconto, final };
+}
+
+async function repairStalePixInstallmentPlan(db, session, payload, mongoSession) {
+  const event = String(payload?.event || '');
+  const payment = payload?.payment || {};
+  const plan = session?.installmentPlan;
+  const eligibleStatus = [
+    'CREATING_PAYMENT',
+    'PAYMENT_PENDING',
+    'PAYMENT_REVIEW_REQUIRED',
+  ].includes(String(session?.status || ''));
+  const isCandidate = Boolean(
+    STALE_PIX_INSTALLMENT_REPAIR_EVENTS.has(event) &&
+    eligibleStatus &&
+    plan &&
+    !String(plan.installmentId || '').trim() &&
+    Number(plan.count) >= 2 &&
+    session.metodoPagamento === 'PIX' &&
+    String(payment.billingType || '').toUpperCase() === 'PIX' &&
+    !String(payment.installment || '').trim() &&
+    (
+      session.status !== 'PAYMENT_REVIEW_REQUIRED' ||
+      session.reconciliationReason === 'PAYMENT_INSTALLMENT_MISMATCH'
+    )
+  );
+  if (!isCandidate) return { attempted: false, repaired: false, reason: null };
+
+  const owner = await db.collection('usuarios').findOne(
+    { _id: session.owner },
+    { projection: { id_api: 1 }, session: mongoSession },
+  );
+  const assignment = await db.collection('pagamentos.atribuicoes').findOne(
+    { compraId: session._id },
+    {
+      projection: {
+        usuarioId: 1,
+        pagamento: 1,
+        installmentPlan: 1,
+        valoresCentavos: 1,
+      },
+      session: mongoSession,
+    },
+  );
+
+  if (!assignment) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_ASSIGNMENT_NOT_FOUND' };
+  }
+  if (String(assignment.usuarioId || '') !== String(session.owner)) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_ASSIGNMENT_OWNER_MISMATCH' };
+  }
+  if (!provisionalInstallmentPlanMatches(plan, assignment.installmentPlan)) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_INSTALLMENT_MISMATCH' };
+  }
+  if (
+    !payment.customer ||
+    !owner?.id_api ||
+    String(payment.customer) !== String(owner.id_api)
+  ) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_CUSTOMER_MISMATCH' };
+  }
+  if (
+    !payment.externalReference ||
+    String(payment.externalReference) !== String(session._id)
+  ) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_EXTERNAL_REFERENCE_MISMATCH' };
+  }
+  if (
+    !session.orderId ||
+    !payment.checkoutSession ||
+    String(payment.checkoutSession) !== String(session.orderId) ||
+    !assignment.pagamento?.checkoutId ||
+    String(assignment.pagamento.checkoutId) !== String(session.orderId)
+  ) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_CHECKOUT_MISMATCH' };
+  }
+  if (!payment.id) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_ID_MISMATCH' };
+  }
+  if (
+    assignment.pagamento?.metodo &&
+    String(assignment.pagamento.metodo).toUpperCase() !== 'PIX'
+  ) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_METHOD_MISMATCH' };
+  }
+
+  const sessionValues = paymentValueSnapshotForMethod(session.valoresCentavos, 'PIX');
+  const assignmentValues = paymentValueSnapshotForMethod(assignment.valoresCentavos, 'PIX');
+  const receivedCents = paymentValueInCents(payment.value);
+  if (
+    !sessionValues ||
+    !assignmentValues ||
+    sessionValues.original !== assignmentValues.original ||
+    sessionValues.desconto !== assignmentValues.desconto ||
+    sessionValues.final !== assignmentValues.final ||
+    receivedCents !== sessionValues.final
+  ) {
+    return { attempted: true, repaired: false, reason: 'PAYMENT_VALUE_MISMATCH' };
+  }
+
+  const now = new Date();
+  const sessionUpdate = await db.collection('pagamentos.sessoes').updateOne(
+    {
+      _id: session._id,
+      status: { $in: ['CREATING_PAYMENT', 'PAYMENT_PENDING', 'PAYMENT_REVIEW_REQUIRED'] },
+      metodoPagamento: 'PIX',
+      'installmentPlan.count': Number(plan.count),
+      'installmentPlan.totalValueCentavos': Number(plan.totalValueCentavos),
+      'installmentPlan.installmentValueCentavos': Number(plan.installmentValueCentavos),
+      $or: [
+        { 'installmentPlan.installmentId': null },
+        { 'installmentPlan.installmentId': '' },
+        { 'installmentPlan.installmentId': { $exists: false } },
+      ],
+    },
+    {
+      $set: { valorSelecionadoCentavos: sessionValues, updatedAt: now },
+      $unset: { installmentPlan: '', selectedInstallmentCode: '' },
+    },
+    { session: mongoSession },
+  );
+  if (sessionUpdate.matchedCount !== 1) {
+    throw new Error('STALE_PIX_INSTALLMENT_SESSION_CHANGED');
+  }
+  const assignmentUpdate = await db.collection('pagamentos.atribuicoes').updateOne(
+    {
+      compraId: session._id,
+      usuarioId: session.owner,
+      'installmentPlan.count': Number(plan.count),
+      'installmentPlan.totalValueCentavos': Number(plan.totalValueCentavos),
+      'installmentPlan.installmentValueCentavos': Number(plan.installmentValueCentavos),
+      $or: [
+        { 'installmentPlan.installmentId': null },
+        { 'installmentPlan.installmentId': '' },
+        { 'installmentPlan.installmentId': { $exists: false } },
+      ],
+    },
+    {
+      $set: { valorSelecionadoCentavos: assignmentValues, updatedAt: now },
+      $unset: { installmentPlan: '', selectedInstallmentCode: '' },
+    },
+    { session: mongoSession },
+  );
+  if (assignmentUpdate.matchedCount !== 1) {
+    throw new Error('STALE_PIX_INSTALLMENT_ASSIGNMENT_CHANGED');
+  }
+
+  delete session.installmentPlan;
+  delete session.selectedInstallmentCode;
+  session.valorSelecionadoCentavos = sessionValues;
+  return { attempted: true, repaired: true, reason: null };
 }
 
 async function hydrateProvisionalInstallmentPlan(db, session, payload, mongoSession) {
@@ -1363,6 +1565,12 @@ export async function processEvent(db, payload, mongoSession) {
     let requiresReview = false;
     let reviewReason = null;
     let allowLegacyConfirmation = true;
+    const stalePixInstallmentRepair = await repairStalePixInstallmentPlan(
+      db,
+      session,
+      payload,
+      mongoSession,
+    );
     const installmentHydration = await hydrateProvisionalInstallmentPlan(
       db,
       session,
@@ -1373,7 +1581,10 @@ export async function processEvent(db, payload, mongoSession) {
       !installmentHydration.ready ||
       !installmentMatchesSession(session, payload?.payment)
     ) {
-      reviewReason = installmentHydration.reason || 'PAYMENT_INSTALLMENT_MISMATCH';
+      reviewReason =
+        stalePixInstallmentRepair.reason ||
+        installmentHydration.reason ||
+        'PAYMENT_INSTALLMENT_MISMATCH';
       await markFinancialEventForReview(
         db,
         session,
@@ -1556,6 +1767,7 @@ export async function processEvent(db, payload, mongoSession) {
       edicaoId: session.edicaoId,
       requiresReview,
       reviewReason,
+      repairedStalePixInstallmentPlan: stalePixInstallmentRepair.repaired,
     };
   }
   const assignmentFilter = assignmentCorrelationFilter(payload);
@@ -1640,6 +1852,18 @@ async function processClaimedWebhookEvent(db, client, claimed) {
       paymentId: payload?.payment?.id || null,
       ...(result.reviewReason ? { reviewReason: result.reviewReason } : {}),
     });
+    if (status === 'PROCESSED' && result.repairedStalePixInstallmentPlan && result.sessionId) {
+      try {
+        await resolveReviewedWebhookEvents(
+          db,
+          result.sessionId,
+          'PAYMENT_INSTALLMENT_MISMATCH',
+          'STALE_PIX_INSTALLMENT_PLAN_REPAIRED',
+        );
+      } catch (error) {
+        console.error('Falha ao encerrar alertas PIX já conciliados:', error);
+      }
+    }
     console.info('Webhook de pagamento processado', {
       eventId: claimed.eventId,
       event: claimed.eventType,

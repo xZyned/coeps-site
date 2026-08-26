@@ -6,7 +6,10 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { runPaymentTransaction } from '../../transactions.ts';
 import { findLegacyPaymentContext } from '../../webhook-legacy.ts';
-import { updateUserRegistrationAfterRefund } from '../../codes.ts';
+import {
+    rollbackRejectedCardPreparation,
+    updateUserRegistrationAfterRefund,
+} from '../../codes.ts';
 import { switchPixSessionToCreditCard } from '../../pix-switch.ts';
 import { cancelPaymentSession } from '../../purchase-cancellation.ts';
 import { countReservedTicketPlaces } from '../../config.ts';
@@ -309,6 +312,108 @@ async function seedModernPayment(
             ...(options.installmentPlan
                 ? { installment: String(options.installmentPlan.installmentId) }
                 : {}),
+        },
+    };
+}
+
+async function seedStalePixInstallmentReview(
+    db: ReturnType<MongoClient['db']>,
+    options: { withLedgerEvents?: boolean } = {},
+) {
+    const purchaseId = new ObjectId();
+    const owner = new ObjectId();
+    const customer = `cus_${owner.toHexString()}`;
+    const checkoutId = `chk_${purchaseId.toHexString()}`;
+    const provisionalPlan = {
+        installmentId: null,
+        count: 3,
+        totalValueCentavos: 24000,
+        installmentValueCentavos: 8000,
+        observedPayments: [],
+    };
+    const valoresCentavos = {
+        original: { PIX: 23500, CREDIT_CARD: 24000 },
+        desconto: { PIX: 0, CREDIT_CARD: 0 },
+        final: { PIX: 23500, CREDIT_CARD: 24000 },
+    };
+    const oldDate = new Date('2026-08-08T10:00:00Z');
+    await db.collection('usuarios').insertOne({
+        _id: owner,
+        id_api: customer,
+        pagamento: { situacao: 2, lista_pagamentos: [] },
+    });
+    await db.collection('pagamentos.sessoes').insertOne({
+        _id: purchaseId,
+        owner,
+        type: 'ticket',
+        edicaoId: 'CIEPS-2026',
+        status: 'PAYMENT_REVIEW_REQUIRED',
+        metodoPagamento: 'PIX',
+        orderId: checkoutId,
+        paymentUrl: `https://checkout.test/${checkoutId}`,
+        installmentPlan: provisionalPlan,
+        selectedInstallmentCode: 3,
+        valorSelecionadoCentavos: { original: 24000, desconto: 0, final: 24000 },
+        valoresCentavos,
+        reconciliationReason: 'PAYMENT_INSTALLMENT_MISMATCH',
+        financialReviewEvent: 'PAYMENT_RECEIVED',
+        reviewRequiredAt: oldDate,
+        expiresAt: new Date('2026-09-30T10:00:00Z'),
+        createdAt: oldDate,
+        updatedAt: oldDate,
+    });
+    await db.collection('pagamentos.atribuicoes').insertOne({
+        compraId: purchaseId,
+        usuarioId: owner,
+        edicaoId: 'CIEPS-2026',
+        status: 'PAGAMENTO_PENDENTE',
+        pagamento: { metodo: 'PIX', checkoutId },
+        installmentPlan: provisionalPlan,
+        selectedInstallmentCode: 3,
+        valorSelecionadoCentavos: { original: 24000, desconto: 0, final: 24000 },
+        valoresCentavos,
+        reconciliationReason: 'PAYMENT_INSTALLMENT_MISMATCH',
+        financialReviewEvent: 'PAYMENT_RECEIVED',
+        reviewRequiredAt: oldDate,
+        updatedAt: oldDate,
+    });
+
+    if (options.withLedgerEvents) {
+        await db.collection(WEBHOOK_EVENTS_V2_COLLECTION).insertMany(
+            ['PAYMENT_CREATED', 'PAYMENT_RECEIVED'].map((eventType, index) => ({
+                provider: 'ASAAS',
+                eventId: `evt_stale_pix_${index}_${purchaseId.toHexString()}`,
+                eventType,
+                paymentId: `pay_${purchaseId.toHexString()}`,
+                installmentId: null,
+                purchaseId,
+                payload: {},
+                payloadHash: `hash_${index}`,
+                status: 'REVIEW_REQUIRED',
+                attempts: 1,
+                reviewReason: 'PAYMENT_INSTALLMENT_MISMATCH',
+                receivedAt: oldDate,
+                updatedAt: oldDate,
+            })),
+        );
+    }
+
+    return {
+        purchaseId,
+        owner,
+        checkoutId,
+        customer,
+        provisionalPlan,
+        valoresCentavos,
+        payment: {
+            id: `pay_${purchaseId.toHexString()}`,
+            invoiceNumber: `inv_${purchaseId.toHexString()}`,
+            customer,
+            externalReference: String(purchaseId),
+            checkoutSession: checkoutId,
+            value: 235,
+            billingType: 'PIX',
+            status: 'RECEIVED',
         },
     };
 }
@@ -1542,6 +1647,260 @@ test('PIX CONFIRMED permanece pendente e somente PAYMENT_RECEIVED libera acesso'
     assert.equal((await db.collection('usuarios').findOne({ _id: seeded.owner }))?.pagamento?.situacao, 1);
 });
 
+test('PIX recebido remove plano provisorio residual somente apos validar toda a correlacao', async () => {
+    const db = client.db('webhook_tests');
+    const { processEvent } = await import(
+        '../../../../api/payment/webhook/payment_notification/route.js'
+    );
+    const seeded = await seedStalePixInstallmentReview(db);
+
+    const result = await runPaymentTransaction(client, (session) => processEvent(db, {
+        id: 'evt_stale_pix_received',
+        event: 'PAYMENT_RECEIVED',
+        payment: seeded.payment,
+    }, session));
+
+    assert.equal(result.requiresReview, false);
+    assert.equal(result.repairedStalePixInstallmentPlan, true);
+    const [paymentSession, assignment, user] = await Promise.all([
+        db.collection('pagamentos.sessoes').findOne({ _id: seeded.purchaseId }),
+        db.collection('pagamentos.atribuicoes').findOne({ compraId: seeded.purchaseId }),
+        db.collection('usuarios').findOne({ _id: seeded.owner }),
+    ]);
+    assert.equal(paymentSession?.status, 'CONFIRMED');
+    assert.equal(paymentSession?.installmentPlan, undefined);
+    assert.equal(paymentSession?.selectedInstallmentCode, undefined);
+    assert.deepEqual(paymentSession?.valorSelecionadoCentavos, {
+        original: 23500,
+        desconto: 0,
+        final: 23500,
+    });
+    assert.equal(assignment?.status, 'CONFIRMADA');
+    assert.equal(assignment?.installmentPlan, undefined);
+    assert.equal(assignment?.selectedInstallmentCode, undefined);
+    assert.equal(user?.pagamento?.situacao, 1);
+});
+
+test('autorreparo PIX nao remove plano quando qualquer invariante financeira diverge', async () => {
+    const db = client.db('webhook_tests');
+    const { processEvent } = await import(
+        '../../../../api/payment/webhook/payment_notification/route.js'
+    );
+    const scenarios = [
+        {
+            name: 'customer',
+            expectedReason: 'PAYMENT_CUSTOMER_MISMATCH',
+            payment: { customer: 'cus_other' },
+        },
+        {
+            name: 'external-reference',
+            expectedReason: 'PAYMENT_EXTERNAL_REFERENCE_MISMATCH',
+            payment: { externalReference: String(new ObjectId()) },
+        },
+        {
+            name: 'checkout',
+            expectedReason: 'PAYMENT_CHECKOUT_MISMATCH',
+            payment: { checkoutSession: 'chk_other' },
+        },
+        {
+            name: 'value',
+            expectedReason: 'PAYMENT_VALUE_MISMATCH',
+            payment: { value: 234.99 },
+        },
+        {
+            name: 'payment-installment',
+            expectedReason: 'PAYMENT_INSTALLMENT_MISMATCH',
+            payment: { installment: 'ins_unexpected' },
+        },
+    ];
+
+    for (const [index, scenario] of scenarios.entries()) {
+        const seeded = await seedStalePixInstallmentReview(db);
+        const result = await runPaymentTransaction(client, (session) => processEvent(db, {
+            id: `evt_stale_pix_blocked_${index}`,
+            event: 'PAYMENT_RECEIVED',
+            payment: { ...seeded.payment, ...scenario.payment },
+        }, session));
+        const [paymentSession, assignment, user] = await Promise.all([
+            db.collection('pagamentos.sessoes').findOne({ _id: seeded.purchaseId }),
+            db.collection('pagamentos.atribuicoes').findOne({ compraId: seeded.purchaseId }),
+            db.collection('usuarios').findOne({ _id: seeded.owner }),
+        ]);
+        assert.equal(result.requiresReview, true, scenario.name);
+        assert.equal(result.reviewReason, scenario.expectedReason, scenario.name);
+        assert.equal(paymentSession?.status, 'PAYMENT_REVIEW_REQUIRED', scenario.name);
+        assert.ok(paymentSession?.installmentPlan, scenario.name);
+        assert.ok(assignment?.installmentPlan, scenario.name);
+        assert.equal(user?.pagamento?.situacao, 2, scenario.name);
+    }
+
+    const assignmentCheckoutMismatch = await seedStalePixInstallmentReview(db);
+    await db.collection('pagamentos.atribuicoes').updateOne(
+        { compraId: assignmentCheckoutMismatch.purchaseId },
+        { $set: { 'pagamento.checkoutId': 'chk_other_assignment' } },
+    );
+    const assignmentCheckoutResult = await runPaymentTransaction(
+        client,
+        (session) => processEvent(db, {
+            id: 'evt_stale_pix_assignment_checkout_mismatch',
+            event: 'PAYMENT_RECEIVED',
+            payment: assignmentCheckoutMismatch.payment,
+        }, session),
+    );
+    assert.equal(assignmentCheckoutResult.requiresReview, true);
+    assert.equal(assignmentCheckoutResult.reviewReason, 'PAYMENT_CHECKOUT_MISMATCH');
+    assert.ok(
+        (await db.collection('pagamentos.sessoes').findOne({
+            _id: assignmentCheckoutMismatch.purchaseId,
+        }))?.installmentPlan,
+    );
+
+    const established = await seedStalePixInstallmentReview(db);
+    await Promise.all([
+        db.collection('pagamentos.sessoes').updateOne(
+            { _id: established.purchaseId },
+            { $set: { 'installmentPlan.installmentId': 'ins_real' } },
+        ),
+        db.collection('pagamentos.atribuicoes').updateOne(
+            { compraId: established.purchaseId },
+            { $set: { 'installmentPlan.installmentId': 'ins_real' } },
+        ),
+    ]);
+    const establishedResult = await runPaymentTransaction(client, (session) => processEvent(db, {
+        id: 'evt_pix_with_real_installment_plan',
+        event: 'PAYMENT_RECEIVED',
+        payment: established.payment,
+    }, session));
+    assert.equal(establishedResult.requiresReview, true);
+    assert.equal(establishedResult.reviewReason, 'PAYMENT_INSTALLMENT_MISMATCH');
+    assert.equal(
+        (await db.collection('pagamentos.sessoes').findOne({ _id: established.purchaseId }))
+            ?.installmentPlan?.installmentId,
+        'ins_real',
+    );
+});
+
+test('recusa conclusiva de cartao limpa preparo parcelado e permite PIX posterior', async () => {
+    const db = client.db('webhook_tests');
+    const { processEvent } = await import(
+        '../../../../api/payment/webhook/payment_notification/route.js'
+    );
+    const purchaseId = new ObjectId();
+    const owner = new ObjectId();
+    const customer = `cus_${owner.toHexString()}`;
+    const checkoutId = `chk_${purchaseId.toHexString()}`;
+    const reservadoAte = new Date('2026-09-30T10:00:00Z');
+    const plan = {
+        installmentId: null,
+        count: 3,
+        totalValueCentavos: 24000,
+        installmentValueCentavos: 8000,
+    };
+    const valoresCentavos = {
+        original: { PIX: 23500, CREDIT_CARD: 24000 },
+        desconto: { PIX: 0, CREDIT_CARD: 0 },
+        final: { PIX: 23500, CREDIT_CARD: 24000 },
+    };
+    await db.collection('usuarios').insertOne({
+        _id: owner,
+        id_api: customer,
+        pagamento: { situacao: 0, lista_pagamentos: [] },
+    });
+    await db.collection('pagamentos.sessoes').insertOne({
+        _id: purchaseId,
+        owner,
+        type: 'ticket',
+        edicaoId: 'CIEPS-2026',
+        status: 'CREATING_PAYMENT',
+        metodoPagamento: 'CREDIT_CARD',
+        installmentPlan: plan,
+        selectedInstallmentCode: 3,
+        valorSelecionadoCentavos: { original: 24000, desconto: 0, final: 24000 },
+        valoresCentavos,
+    });
+    await db.collection('pagamentos.atribuicoes').insertOne({
+        compraId: purchaseId,
+        usuarioId: owner,
+        edicaoId: 'CIEPS-2026',
+        status: 'RESERVADA',
+        installmentPlan: plan,
+        selectedInstallmentCode: 3,
+        valorSelecionadoCentavos: { original: 24000, desconto: 0, final: 24000 },
+        valoresCentavos,
+    });
+    await db.collection('pagamentos.codigos').insertOne({
+        tipo: 'DESCONTO',
+        status: 'RESERVADO',
+        reserva: {
+            compraId: purchaseId,
+            cobrancaExternaCriada: true,
+            reservadoAte: new Date('2026-08-08T10:00:00Z'),
+        },
+    });
+
+    const rolledBack = await runPaymentTransaction(client, (session) =>
+        rollbackRejectedCardPreparation(db, purchaseId, owner, reservadoAte, session),
+    );
+    assert.equal(rolledBack, true);
+    const [openSession, openAssignment, discount] = await Promise.all([
+        db.collection('pagamentos.sessoes').findOne({ _id: purchaseId }),
+        db.collection('pagamentos.atribuicoes').findOne({ compraId: purchaseId }),
+        db.collection('pagamentos.codigos').findOne({ 'reserva.compraId': purchaseId }),
+    ]);
+    assert.equal(openSession?.status, 'OPEN');
+    assert.equal(openSession?.metodoPagamento, null);
+    assert.equal(openSession?.installmentPlan, undefined);
+    assert.equal(openSession?.selectedInstallmentCode, undefined);
+    assert.equal(openSession?.valorSelecionadoCentavos, undefined);
+    assert.equal(openAssignment?.installmentPlan, undefined);
+    assert.equal(openAssignment?.valorSelecionadoCentavos, undefined);
+    assert.equal(discount?.reserva?.cobrancaExternaCriada, false);
+    assert.deepEqual(discount?.reserva?.reservadoAte, reservadoAte);
+
+    await Promise.all([
+        db.collection('pagamentos.sessoes').updateOne(
+            { _id: purchaseId },
+            {
+                $set: {
+                    status: 'PAYMENT_PENDING',
+                    metodoPagamento: 'PIX',
+                    orderId: checkoutId,
+                    valorSelecionadoCentavos: { original: 23500, desconto: 0, final: 23500 },
+                },
+            },
+        ),
+        db.collection('pagamentos.atribuicoes').updateOne(
+            { compraId: purchaseId },
+            {
+                $set: {
+                    status: 'PAGAMENTO_PENDENTE',
+                    pagamento: { metodo: 'PIX', checkoutId },
+                    valorSelecionadoCentavos: { original: 23500, desconto: 0, final: 23500 },
+                },
+            },
+        ),
+    ]);
+    const pixResult = await runPaymentTransaction(client, (session) => processEvent(db, {
+        id: 'evt_pix_after_rejected_card',
+        event: 'PAYMENT_RECEIVED',
+        payment: {
+            id: `pay_${purchaseId.toHexString()}`,
+            invoiceNumber: `inv_${purchaseId.toHexString()}`,
+            customer,
+            externalReference: String(purchaseId),
+            checkoutSession: checkoutId,
+            value: 235,
+            billingType: 'PIX',
+            status: 'RECEIVED',
+        },
+    }, session));
+    assert.equal(pixResult.requiresReview, false);
+    assert.equal(
+        (await db.collection('pagamentos.sessoes').findOne({ _id: purchaseId }))?.status,
+        'CONFIRMED',
+    );
+});
+
 test('parcelamento 3x aceita novos paymentIds e refund de uma parcela nao revoga inscricao', async () => {
     const db = client.db('webhook_tests');
     const { processEvent } = await import(
@@ -2022,6 +2381,194 @@ test('reconciliacao reutiliza validacao e bloqueia referencia externa cruzada', 
         assert.equal(paymentSession?.status, 'PAYMENT_REVIEW_REQUIRED');
         assert.match(paymentSession?.reconciliationReason || '', /PAYMENT_EXTERNAL_REFERENCE_MISMATCH/);
         assert.equal(paymentSession?.reconciliationLeaseUntil, undefined);
+        assert.equal(user?.pagamento?.situacao, 2);
+    } finally {
+        globalThis.fetch = previous.fetch;
+        if (previous.apiUrl === undefined) delete process.env.ASAAS_API_URL;
+        else process.env.ASAAS_API_URL = previous.apiUrl;
+        if (previous.apiKey === undefined) delete process.env.ASAAS_API_KEY;
+        else process.env.ASAAS_API_KEY = previous.apiKey;
+        if (previous.secret === undefined) delete process.env.PAYMENT_RECONCILIATION_SECRET;
+        else process.env.PAYMENT_RECONCILIATION_SECRET = previous.secret;
+    }
+});
+
+test('reconciliacao recupera PIX preso por plano provisorio e encerra alertas antigos', async () => {
+    const db = await createLedgerIndexes();
+    const seeded = await seedStalePixInstallmentReview(db, { withLedgerEvents: true });
+    const previous = {
+        apiUrl: process.env.ASAAS_API_URL,
+        apiKey: process.env.ASAAS_API_KEY,
+        secret: process.env.PAYMENT_RECONCILIATION_SECRET,
+        fetch: globalThis.fetch,
+    };
+    process.env.ASAAS_API_URL = 'https://api-sandbox.asaas.com/v3';
+    process.env.ASAAS_API_KEY = 'fixture-key';
+    process.env.PAYMENT_RECONCILIATION_SECRET = 'fixture-root-secret-with-more-than-32-bytes';
+    globalThis.fetch = (async (input) => {
+        assert.match(String(input), new RegExp(`payments\\?checkoutSession=${seeded.checkoutId}`));
+        return Response.json({ data: [seeded.payment], hasMore: false });
+    }) as typeof fetch;
+    try {
+        const [{ derivePaymentCredential }, { POST }] = await Promise.all([
+            import('../../webhook-auth.ts'),
+            import('../../../../api/payment/reconciliation/route.ts'),
+        ]);
+        const token = derivePaymentCredential('reconciliation');
+        assert.ok(token);
+        const response = await POST(new Request('http://localhost/api/payment/reconciliation', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${token}` },
+        }));
+        assert.equal(response.status, 200);
+        const counters = await response.json();
+        assert.equal(counters.confirmed, 1);
+        const [paymentSession, assignment, user, reviewedEvents] = await Promise.all([
+            db.collection('pagamentos.sessoes').findOne({ _id: seeded.purchaseId }),
+            db.collection('pagamentos.atribuicoes').findOne({ compraId: seeded.purchaseId }),
+            db.collection('usuarios').findOne({ _id: seeded.owner }),
+            db.collection(WEBHOOK_EVENTS_V2_COLLECTION)
+                .find({ purchaseId: seeded.purchaseId })
+                .sort({ eventType: 1 })
+                .toArray(),
+        ]);
+        assert.equal(paymentSession?.status, 'CONFIRMED');
+        assert.equal(paymentSession?.installmentPlan, undefined);
+        assert.equal(paymentSession?.reconciliationReason, undefined);
+        assert.equal(assignment?.status, 'CONFIRMADA');
+        assert.equal(assignment?.installmentPlan, undefined);
+        assert.equal(assignment?.reconciliationReason, undefined);
+        assert.equal(user?.pagamento?.situacao, 1);
+        assert.equal(reviewedEvents.length, 2);
+        for (const event of reviewedEvents) {
+            assert.equal(event.status, 'PROCESSED');
+            assert.equal(event.reviewReason, undefined);
+            assert.equal(event.resolvedReviewReason, 'PAYMENT_INSTALLMENT_MISMATCH');
+            assert.equal(event.resolutionReason, 'STALE_PIX_INSTALLMENT_PLAN_REPAIRED');
+            assert.ok(event.resolvedAt instanceof Date);
+            assert.ok(event.processedAt instanceof Date);
+        }
+    } finally {
+        globalThis.fetch = previous.fetch;
+        if (previous.apiUrl === undefined) delete process.env.ASAAS_API_URL;
+        else process.env.ASAAS_API_URL = previous.apiUrl;
+        if (previous.apiKey === undefined) delete process.env.ASAAS_API_KEY;
+        else process.env.ASAAS_API_KEY = previous.apiKey;
+        if (previous.secret === undefined) delete process.env.PAYMENT_RECONCILIATION_SECRET;
+        else process.env.PAYMENT_RECONCILIATION_SECRET = previous.secret;
+    }
+});
+
+test('reconciliacao nao escolhe arbitrariamente entre multiplos pagamentos do checkout', async () => {
+    const db = await createLedgerIndexes();
+    const seeded = await seedStalePixInstallmentReview(db);
+    const previous = {
+        apiUrl: process.env.ASAAS_API_URL,
+        apiKey: process.env.ASAAS_API_KEY,
+        secret: process.env.PAYMENT_RECONCILIATION_SECRET,
+        fetch: globalThis.fetch,
+    };
+    process.env.ASAAS_API_URL = 'https://api-sandbox.asaas.com/v3';
+    process.env.ASAAS_API_KEY = 'fixture-key';
+    process.env.PAYMENT_RECONCILIATION_SECRET = 'fixture-root-secret-with-more-than-32-bytes';
+    globalThis.fetch = (async () => Response.json({
+        data: [
+            seeded.payment,
+            { ...seeded.payment, id: 'pay_duplicate_checkout' },
+        ],
+        hasMore: false,
+    })) as typeof fetch;
+    try {
+        const [{ derivePaymentCredential }, { POST }] = await Promise.all([
+            import('../../webhook-auth.ts'),
+            import('../../../../api/payment/reconciliation/route.ts'),
+        ]);
+        const token = derivePaymentCredential('reconciliation');
+        assert.ok(token);
+        const response = await POST(new Request('http://localhost/api/payment/reconciliation', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${token}` },
+        }));
+        assert.equal(response.status, 200);
+        const [paymentSession, assignment, user] = await Promise.all([
+            db.collection('pagamentos.sessoes').findOne({ _id: seeded.purchaseId }),
+            db.collection('pagamentos.atribuicoes').findOne({ compraId: seeded.purchaseId }),
+            db.collection('usuarios').findOne({ _id: seeded.owner }),
+        ]);
+        assert.equal(paymentSession?.status, 'PAYMENT_REVIEW_REQUIRED');
+        assert.equal(paymentSession?.reconciliationReason, 'MULTIPLE_GATEWAY_PAYMENTS');
+        assert.equal(paymentSession?.reconciliationCandidateCount, 2);
+        assert.equal(paymentSession?.reconciliationEmptyChecks, undefined);
+        assert.ok(paymentSession?.installmentPlan);
+        assert.equal(assignment?.reconciliationReason, 'MULTIPLE_GATEWAY_PAYMENTS');
+        assert.equal(assignment?.reconciliationCandidateCount, 2);
+        assert.equal(user?.pagamento?.situacao, 2);
+    } finally {
+        globalThis.fetch = previous.fetch;
+        if (previous.apiUrl === undefined) delete process.env.ASAAS_API_URL;
+        else process.env.ASAAS_API_URL = previous.apiUrl;
+        if (previous.apiKey === undefined) delete process.env.ASAAS_API_KEY;
+        else process.env.ASAAS_API_KEY = previous.apiKey;
+        if (previous.secret === undefined) delete process.env.PAYMENT_RECONCILIATION_SECRET;
+        else process.env.PAYMENT_RECONCILIATION_SECRET = previous.secret;
+    }
+});
+
+test('reconciliacao nao escolhe arbitrariamente entre multiplos pagamentos em criacao', async () => {
+    const db = await createLedgerIndexes();
+    const seeded = await seedModernPayment(db, { status: 'CREATING_PAYMENT' });
+    await db.collection('pagamentos.sessoes').updateOne(
+        { _id: seeded.purchaseId },
+        {
+            $set: {
+                gatewayState: 'RECONCILIATION_REQUIRED',
+                updatedAt: new Date('2026-08-08T10:00:00Z'),
+            },
+            $unset: { paymentId: '', invoiceNumber: '' },
+        },
+    );
+    const previous = {
+        apiUrl: process.env.ASAAS_API_URL,
+        apiKey: process.env.ASAAS_API_KEY,
+        secret: process.env.PAYMENT_RECONCILIATION_SECRET,
+        fetch: globalThis.fetch,
+    };
+    process.env.ASAAS_API_URL = 'https://api-sandbox.asaas.com/v3';
+    process.env.ASAAS_API_KEY = 'fixture-key';
+    process.env.PAYMENT_RECONCILIATION_SECRET = 'fixture-root-secret-with-more-than-32-bytes';
+    globalThis.fetch = (async (input) => {
+        assert.match(String(input), /payments\?externalReference=.*&limit=2/);
+        return Response.json({
+            data: [
+                seeded.payment,
+                { ...seeded.payment, id: 'pay_duplicate_creating' },
+            ],
+            hasMore: false,
+        });
+    }) as typeof fetch;
+    try {
+        const [{ derivePaymentCredential }, { POST }] = await Promise.all([
+            import('../../webhook-auth.ts'),
+            import('../../../../api/payment/reconciliation/route.ts'),
+        ]);
+        const token = derivePaymentCredential('reconciliation');
+        assert.ok(token);
+        const response = await POST(new Request('http://localhost/api/payment/reconciliation', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${token}` },
+        }));
+        assert.equal(response.status, 200);
+        const [paymentSession, assignment, user] = await Promise.all([
+            db.collection('pagamentos.sessoes').findOne({ _id: seeded.purchaseId }),
+            db.collection('pagamentos.atribuicoes').findOne({ compraId: seeded.purchaseId }),
+            db.collection('usuarios').findOne({ _id: seeded.owner }),
+        ]);
+        assert.equal(paymentSession?.status, 'PAYMENT_REVIEW_REQUIRED');
+        assert.equal(paymentSession?.reconciliationReason, 'MULTIPLE_GATEWAY_PAYMENTS');
+        assert.equal(paymentSession?.reconciliationCandidateCount, 2);
+        assert.equal(paymentSession?.reconciliationEmptyChecks, undefined);
+        assert.equal(assignment?.reconciliationReason, 'MULTIPLE_GATEWAY_PAYMENTS');
+        assert.equal(assignment?.reconciliationCandidateCount, 2);
         assert.equal(user?.pagamento?.situacao, 2);
     } finally {
         globalThis.fetch = previous.fetch;

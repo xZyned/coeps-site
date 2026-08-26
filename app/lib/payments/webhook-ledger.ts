@@ -40,6 +40,9 @@ export interface WebhookEventV2 extends Document {
     expiresAt?: Date;
     lastError?: string;
     reviewReason?: string;
+    resolvedAt?: Date;
+    resolutionReason?: string;
+    resolvedReviewReason?: string;
 }
 
 interface WebhookWorkerLock extends Document {
@@ -281,6 +284,42 @@ export async function finishWebhookEvent(
     );
 
     if (result.matchedCount !== 1) throw new Error('WEBHOOK_LEDGER_FINISH_CONFLICT');
+}
+
+export async function resolveReviewedWebhookEvents(
+    db: Db,
+    purchaseId: ObjectId,
+    reviewReason: string,
+    resolutionReason: string,
+): Promise<number> {
+    const now = new Date();
+    const result = await db.collection<WebhookEventV2>(WEBHOOK_EVENTS_V2_COLLECTION).updateMany(
+        {
+            provider: 'ASAAS',
+            purchaseId,
+            status: 'REVIEW_REQUIRED',
+            reviewReason,
+        },
+        {
+            $set: {
+                status: 'PROCESSED',
+                processedAt: now,
+                expiresAt: new Date(now.getTime() + PROCESSED_RETENTION_MS),
+                updatedAt: now,
+                resolvedAt: now,
+                resolutionReason,
+                resolvedReviewReason: reviewReason,
+            },
+            $unset: {
+                leaseUntil: '',
+                nextAttemptAt: '',
+                lastError: '',
+                reviewReason: '',
+            },
+        },
+    );
+
+    return result.modifiedCount;
 }
 
 export async function failWebhookEvent(

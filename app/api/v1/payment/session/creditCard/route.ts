@@ -6,7 +6,7 @@ import { getUserId } from '@/lib/getUserId';
 import {
     cancelPaymentAfterLostDiscountReservation,
     markDiscountHasExternalCharge,
-    restoreDiscountAfterRejectedCharge,
+    rollbackRejectedCardPreparation,
     updatePaymentAssignment,
 } from '@/lib/payments/codes';
 import { runPaymentTransaction } from '@/lib/payments/transactions';
@@ -363,15 +363,18 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
                     { $set: { gatewayState: 'RECONCILIATION_REQUIRED', updatedAt: new Date() } },
                 );
             } else {
-                await restoreDiscountAfterRejectedCharge(
-                    db,
-                    sessionId,
-                    new Date(existingSession.expiresAt),
-                );
-                await db.collection('pagamentos.sessoes').updateOne(
-                    { _id: sessionId, status: 'CREATING_PAYMENT' },
-                    { $set: { status: 'OPEN', metodoPagamento: null, updatedAt: new Date() } },
-                );
+                await runPaymentTransaction(client, async (mongoSession) => {
+                    const rolledBack = await rollbackRejectedCardPreparation(
+                        db,
+                        sessionId,
+                        owner,
+                        new Date(existingSession.expiresAt),
+                        mongoSession,
+                    );
+                    if (!rolledBack) {
+                        throw new Error('PAYMENT_CARD_REJECTION_ROLLBACK_FAILED');
+                    }
+                });
             }
 
             return NextResponse.json(

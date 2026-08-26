@@ -8,6 +8,7 @@ import {
     updatePaymentAssignment,
 } from '../../../lib/payments/codes.ts';
 import { runPaymentTransaction } from '../../../lib/payments/transactions.ts';
+import { resolveReviewedWebhookEvents } from '../../../lib/payments/webhook-ledger.ts';
 import { requestCheckoutCancellation } from '../../../lib/payments/checkout-cancellation.ts';
 import { switchPixSessionToCreditCard } from '../../../lib/payments/pix-switch.ts';
 import { cancelPaymentSession } from '../../../lib/payments/purchase-cancellation.ts';
@@ -19,14 +20,6 @@ import {
 } from '../../../lib/payments/overdue.ts';
 
 export const maxDuration = 110;
-
-function firstGatewayItem(payload: unknown): Record<string, unknown> | null {
-    if (!payload || typeof payload !== 'object') return null;
-    const data = (payload as { data?: unknown }).data;
-    return Array.isArray(data) && data[0] && typeof data[0] === 'object'
-        ? (data[0] as Record<string, unknown>)
-        : null;
-}
 
 function gatewayStatus(record: Record<string, unknown>): string {
     return String(record.status || '').toUpperCase();
@@ -46,11 +39,29 @@ function isGatewayPaymentCancelled(status: string): boolean {
     return ['DELETED', 'CANCELLED', 'CANCELED'].includes(status);
 }
 
+type PendingPaymentLookup =
+    | { kind: 'found'; record: Record<string, unknown> }
+    | { kind: 'not_found' }
+    | { kind: 'ambiguous'; count: number }
+    | { kind: 'inconclusive' };
+
+function classifyPaymentList(payload: unknown): PendingPaymentLookup {
+    if (!payload || typeof payload !== 'object') return { kind: 'inconclusive' };
+    const data = (payload as { data?: unknown }).data;
+    if (!Array.isArray(data)) return { kind: 'inconclusive' };
+    const records = data.filter(
+        (item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'),
+    );
+    if (records.length === 0) return { kind: 'not_found' };
+    if (records.length > 1) return { kind: 'ambiguous', count: records.length };
+    return { kind: 'found', record: records[0] };
+}
+
 async function lookupPendingPayment(
     apiUrl: string,
     apiKey: string,
     paymentSession: Record<string, unknown>,
-): Promise<{ conclusive: boolean; record: Record<string, unknown> | null }> {
+): Promise<PendingPaymentLookup> {
     const headers = asaasRequestHeaders(apiKey, { apiUrl });
     const paymentId = typeof paymentSession.paymentId === 'string'
         ? paymentSession.paymentId
@@ -66,20 +77,64 @@ async function lookupPendingPayment(
 
     try {
         const response = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) });
-        if (response.status === 404) return { conclusive: true, record: null };
-        if (!response.ok) return { conclusive: false, record: null };
+        if (response.status === 404) return { kind: 'not_found' };
+        if (!response.ok) return { kind: 'inconclusive' };
 
         const payload = await response.json().catch(() => null);
-        const record = paymentId
-            ? payload && typeof payload === 'object'
-                ? (payload as Record<string, unknown>)
-                : null
-            : firstGatewayItem(payload);
-        return { conclusive: true, record };
+        if (paymentId) {
+            if (!payload || typeof payload !== 'object' || !('id' in payload)) {
+                return { kind: 'inconclusive' };
+            }
+            return { kind: 'found', record: payload as Record<string, unknown> };
+        }
+
+        return classifyPaymentList(payload);
     } catch (error) {
         console.error('Falha temporária ao consultar pagamento pendente:', error);
-        return { conclusive: false, record: null };
+        return { kind: 'inconclusive' };
     }
+}
+
+async function markAmbiguousGatewayPayments(
+    db: Awaited<ReturnType<typeof connectToDatabase>>['db'],
+    client: Awaited<ReturnType<typeof connectToDatabase>>['client'],
+    paymentSession: Record<string, any>,
+    count: number,
+): Promise<void> {
+    await runPaymentTransaction(client, async (mongoSession) => {
+        const now = new Date();
+        const terminal = ['CONFIRMED', 'REFUNDED', 'CANCELLED', 'EXPIRED'].includes(
+            String(paymentSession.status || ''),
+        );
+        await db.collection('pagamentos.sessoes').updateOne(
+            { _id: paymentSession._id },
+            {
+                $set: {
+                    status: terminal ? paymentSession.status : 'PAYMENT_REVIEW_REQUIRED',
+                    gatewayState: 'PAYMENT_REVIEW_REQUIRED',
+                    reconciliationReason: 'MULTIPLE_GATEWAY_PAYMENTS',
+                    reconciliationCandidateCount: count,
+                    reviewRequiredAt: now,
+                    updatedAt: now,
+                },
+                $unset: { reconciliationLeaseUntil: '' },
+            },
+            { session: mongoSession },
+        );
+        await db.collection('pagamentos.atribuicoes').updateOne(
+            { compraId: paymentSession._id },
+            {
+                $set: {
+                    gatewayState: 'PAYMENT_REVIEW_REQUIRED',
+                    reconciliationReason: 'MULTIPLE_GATEWAY_PAYMENTS',
+                    reconciliationCandidateCount: count,
+                    reviewRequiredAt: now,
+                    updatedAt: now,
+                },
+            },
+            { session: mongoSession },
+        );
+    });
 }
 
 async function deletePendingGatewayPayment(
@@ -113,9 +168,9 @@ async function reconcileConfirmedPayment(
     paymentSession: Record<string, any>,
     payment: Record<string, any>,
 ): Promise<boolean> {
-    return runPaymentTransaction(client, async (mongoSession) => {
+    const outcome = await runPaymentTransaction(client, async (mongoSession) => {
         const status = gatewayStatus(payment);
-        await processEvent(
+        const result = await processEvent(
             db,
             {
                 id: `reconciliation:${paymentSession._id}:${String(payment.id || 'unknown')}:${status}`,
@@ -131,8 +186,20 @@ async function reconcileConfirmedPayment(
             { $unset: { reconciliationLeaseUntil: '' } },
             { returnDocument: 'after', projection: { status: 1 }, session: mongoSession },
         );
-        return updated?.status === 'CONFIRMED';
+        return {
+            confirmed: updated?.status === 'CONFIRMED',
+            repairedStalePixInstallmentPlan: result.repairedStalePixInstallmentPlan === true,
+        };
     });
+    if (outcome.confirmed && outcome.repairedStalePixInstallmentPlan) {
+        await resolveReviewedWebhookEvents(
+            db,
+            paymentSession._id as ObjectId,
+            'PAYMENT_INSTALLMENT_MISMATCH',
+            'STALE_PIX_INSTALLMENT_PLAN_REPAIRED',
+        );
+    }
+    return outcome.confirmed;
 }
 
 async function lookupInstallmentPayments(
@@ -510,7 +577,7 @@ export async function POST(request: Request) {
 
         if (lease.status === 'CONFIRMED') {
             const lookup = await lookupPendingPayment(apiUrl, apiKey, lease);
-            if (!lookup.conclusive) {
+            if (lookup.kind === 'inconclusive') {
                 await db.collection('pagamentos.sessoes').updateOne(
                     { _id: lease._id, status: 'CONFIRMED' },
                     {
@@ -524,25 +591,32 @@ export async function POST(request: Request) {
                 counters.pending += 1;
                 continue;
             }
+            if (lookup.kind === 'ambiguous') {
+                await markAmbiguousGatewayPayments(db, client, lease, lookup.count);
+                counters.pending += 1;
+                continue;
+            }
 
-            if (lookup.record && isGatewayPaymentRefunded(gatewayStatus(lookup.record))) {
-                if (await reconcileRefundedPayment(db, client, lease, lookup.record)) {
+            const providerRecord = lookup.kind === 'found' ? lookup.record : null;
+
+            if (providerRecord && isGatewayPaymentRefunded(gatewayStatus(providerRecord))) {
+                if (await reconcileRefundedPayment(db, client, lease, providerRecord)) {
                     counters.refunded += 1;
                 }
                 continue;
             }
 
             if (
-                !lookup.record ||
-                !isGatewayPaymentConfirmed(lookup.record)
+                !providerRecord ||
+                !isGatewayPaymentConfirmed(providerRecord)
             ) {
                 await db.collection('pagamentos.sessoes').updateOne(
                     { _id: lease._id, status: 'CONFIRMED' },
                     {
                         $set: {
                             gatewayState: 'PAYMENT_REVIEW_REQUIRED',
-                            reconciliationReason: lookup.record
-                                ? `Pagamento confirmado retornou ${gatewayStatus(lookup.record)}`
+                            reconciliationReason: providerRecord
+                                ? `Pagamento confirmado retornou ${gatewayStatus(providerRecord)}`
                                 : 'Pagamento confirmado não foi encontrado no provedor',
                             reviewRequiredAt: new Date(),
                             updatedAt: new Date(),
@@ -558,7 +632,7 @@ export async function POST(request: Request) {
                 { _id: lease._id, status: 'CONFIRMED' },
                 {
                     $set: {
-                        gatewayState: gatewayStatus(lookup.record),
+                        gatewayState: gatewayStatus(providerRecord),
                         lastConfirmedReconciliationAt: new Date(),
                         updatedAt: new Date(),
                     },
@@ -572,7 +646,7 @@ export async function POST(request: Request) {
         if (['PAYMENT_PENDING', 'PAYMENT_REVIEW_REQUIRED'].includes(lease.status)) {
             const lookup = await lookupPendingPayment(apiUrl, apiKey, lease);
 
-            if (!lookup.conclusive) {
+            if (lookup.kind === 'inconclusive') {
                 await db.collection('pagamentos.sessoes').updateOne(
                     {
                         _id: lease._id,
@@ -589,17 +663,23 @@ export async function POST(request: Request) {
                 counters.pending += 1;
                 continue;
             }
+            if (lookup.kind === 'ambiguous') {
+                await markAmbiguousGatewayPayments(db, client, lease, lookup.count);
+                counters.pending += 1;
+                continue;
+            }
 
-            if (lookup.record) {
-                const status = gatewayStatus(lookup.record);
-                if (isGatewayPaymentConfirmed(lookup.record)) {
-                    if (await reconcileConfirmedPayment(db, client, lease, lookup.record)) {
+            if (lookup.kind === 'found') {
+                const providerRecord = lookup.record;
+                const status = gatewayStatus(providerRecord);
+                if (isGatewayPaymentConfirmed(providerRecord)) {
+                    if (await reconcileConfirmedPayment(db, client, lease, providerRecord)) {
                         counters.confirmed += 1;
                     }
                     continue;
                 }
                 if (isGatewayPaymentRefunded(status)) {
-                    if (await reconcileRefundedPayment(db, client, lease, lookup.record)) {
+                    if (await reconcileRefundedPayment(db, client, lease, providerRecord)) {
                         counters.refunded += 1;
                     }
                     continue;
@@ -623,7 +703,7 @@ export async function POST(request: Request) {
                         now,
                         getPaymentOverdueGraceDays(),
                         status === 'BANK_SLIP_CANCELLED',
-                        lookup.record.dueDate,
+                        providerRecord.dueDate,
                     );
                     await db.collection('pagamentos.sessoes').updateOne(
                         {
@@ -645,7 +725,7 @@ export async function POST(request: Request) {
                     providerIsDelinquent &&
                     isCancellationEligible(cancellationEligibleAt, now)
                 ) {
-                    const paymentId = String(lookup.record.id || lease.paymentId || '');
+                    const paymentId = String(providerRecord.id || lease.paymentId || '');
                     if (!paymentId) {
                         await db.collection('pagamentos.sessoes').updateOne(
                             {
@@ -717,11 +797,11 @@ export async function POST(request: Request) {
                         {
                             $set: {
                                 gatewayState: status || lease.gatewayState || 'PENDING',
-                                paymentId: lookup.record.id || lease.paymentId || null,
+                                paymentId: providerRecord.id || lease.paymentId || null,
                                 invoiceNumber:
-                                    lookup.record.invoiceNumber || lease.invoiceNumber || null,
+                                    providerRecord.invoiceNumber || lease.invoiceNumber || null,
                                 paymentUrl:
-                                    lookup.record.invoiceUrl || lease.paymentUrl || null,
+                                    providerRecord.invoiceUrl || lease.paymentUrl || null,
                                 updatedAt: new Date(),
                             },
                             $unset: {
@@ -740,14 +820,14 @@ export async function POST(request: Request) {
                         {
                             metodo:
                                 String(
-                                    lookup.record?.billingType || lease.metodoPagamento || '',
+                                    providerRecord.billingType || lease.metodoPagamento || '',
                                 ) || undefined,
                             checkoutId: String(lease.orderId || '') || undefined,
                             paymentId:
-                                String(lookup.record?.id || lease.paymentId || '') || undefined,
+                                String(providerRecord.id || lease.paymentId || '') || undefined,
                             invoiceNumber:
                                 String(
-                                    lookup.record?.invoiceNumber || lease.invoiceNumber || '',
+                                    providerRecord.invoiceNumber || lease.invoiceNumber || '',
                                 ) || undefined,
                         },
                         mongoSession,
@@ -832,13 +912,22 @@ export async function POST(request: Request) {
             const headers = asaasRequestHeaders(apiKey, { apiUrl });
             try {
                 const paymentsResponse = await fetch(
-                    `${apiUrl}/payments?externalReference=${externalReference}&limit=1`,
+                    `${apiUrl}/payments?externalReference=${externalReference}&limit=2`,
                     { headers, signal: AbortSignal.timeout(8_000) },
                 );
                 if (paymentsResponse.ok) {
-                    providerRecord = firstGatewayItem(
+                    const lookup = classifyPaymentList(
                         await paymentsResponse.json().catch(() => null),
                     );
+                    if (lookup.kind === 'found') {
+                        providerRecord = lookup.record;
+                    } else if (lookup.kind === 'ambiguous') {
+                        await markAmbiguousGatewayPayments(db, client, lease, lookup.count);
+                        counters.pending += 1;
+                        continue;
+                    } else if (lookup.kind === 'inconclusive') {
+                        lookupConclusive = false;
+                    }
                 } else {
                     lookupConclusive = false;
                 }

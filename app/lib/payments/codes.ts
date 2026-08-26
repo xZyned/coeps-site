@@ -326,6 +326,57 @@ export async function restoreDiscountAfterRejectedCharge(
     );
 }
 
+export async function rollbackRejectedCardPreparation(
+    db: Db,
+    compraId: ObjectId,
+    usuarioId: ObjectId,
+    reservadoAte: Date,
+    mongoSession: ClientSession,
+): Promise<boolean> {
+    await restoreDiscountAfterRejectedCharge(
+        db,
+        compraId,
+        reservadoAte,
+        mongoSession,
+    );
+    const now = new Date();
+    const sessionRollback = await db.collection('pagamentos.sessoes').updateOne(
+        {
+            _id: compraId,
+            owner: usuarioId,
+            status: 'CREATING_PAYMENT',
+            metodoPagamento: 'CREDIT_CARD',
+        },
+        {
+            $set: {
+                status: 'OPEN',
+                metodoPagamento: null,
+                updatedAt: now,
+            },
+            $unset: {
+                installmentPlan: '',
+                selectedInstallmentCode: '',
+                valorSelecionadoCentavos: '',
+            },
+        },
+        { session: mongoSession },
+    );
+    const assignmentRollback = await db.collection(PAYMENT_ASSIGNMENTS_COLLECTION).updateOne(
+        { compraId, usuarioId },
+        {
+            $set: { updatedAt: now },
+            $unset: {
+                installmentPlan: '',
+                selectedInstallmentCode: '',
+                valorSelecionadoCentavos: '',
+            },
+        },
+        { session: mongoSession },
+    );
+
+    return sessionRollback.modifiedCount === 1 && assignmentRollback.matchedCount === 1;
+}
+
 export async function transferDiscountReservation(
     db: Db,
     fromPurchaseId: ObjectId,
