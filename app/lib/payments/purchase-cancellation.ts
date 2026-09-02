@@ -16,6 +16,7 @@ import {
     updatePaymentAssignment,
 } from './codes.ts';
 import { runPaymentTransaction } from './transactions.ts';
+import { setUnconfirmedPaymentSituation } from './user-state.ts';
 
 const CANCELLATION_LEASE_MS = 45_000;
 
@@ -171,11 +172,13 @@ async function completePurchaseCancellation(
         }
     }
 
-    await db.collection('usuarios').updateOne(
-        { _id: owner, 'pagamento.situacao': { $ne: 1 } },
-        { $set: { 'pagamento.situacao': 0 } },
-        { session: mongoSession },
-    );
+    await setUnconfirmedPaymentSituation({
+        db,
+        owner,
+        situation: 0,
+        mongoSession,
+        errorCode: 'PURCHASE_CANCELLATION_OWNER_NOT_FOUND',
+    });
 
     return {
         ...current,

@@ -20,6 +20,10 @@ import { findLegacyPaymentContext } from '../../../../lib/payments/webhook-legac
 import { asaasRequestHeaders } from '../../../../lib/payments/asaas.ts';
 import { completePixToCardSwitch } from '../../../../lib/payments/pix-switch.ts';
 import {
+  assertPaymentOwnerUpdate,
+  setUnconfirmedPaymentSituation,
+} from '../../../../lib/payments/user-state.ts';
+import {
   acquireWebhookWorkerLease,
   claimWebhookEvent,
   ensureWebhookLedgerReady,
@@ -514,11 +518,12 @@ export async function updateLegacyPayment(
         update.$set = { 'pagamento.situacao': 0 };
       }
     }
-    await db.collection('usuarios').updateOne(
+    const userUpdate = await db.collection('usuarios').updateOne(
       { _id: user._id },
       update,
       { session: mongoSession },
     );
+    assertPaymentOwnerUpdate(userUpdate);
     if (
       storedPayment?._type === 'activity' &&
       ObjectId.isValid(String(storedPayment?._eventID))
@@ -564,7 +569,7 @@ export async function updateLegacyPayment(
     }
   }
 
-  await db.collection('usuarios').updateOne(
+  const userUpdate = await db.collection('usuarios').updateOne(
     { _id: user._id },
     { $set: set },
     {
@@ -574,6 +579,7 @@ export async function updateLegacyPayment(
       session: mongoSession,
     },
   );
+  assertPaymentOwnerUpdate(userUpdate);
 
   if (storedPayment?._type === 'activity' && ObjectId.isValid(String(storedPayment?._eventID))) {
     if (isAccessGrantingEvent(event, payment)) {
@@ -888,11 +894,12 @@ async function cancelSessionPayment(db, session, payload, mongoSession) {
       releaseDiscountReservation(db, session._id, mongoSession),
       updatePaymentAssignment(db, session._id, assignmentStatus, undefined, mongoSession),
     ]);
-    await db.collection('usuarios').updateOne(
-      { _id: session.owner, 'pagamento.situacao': { $ne: 1 } },
-      { $set: { 'pagamento.situacao': 0 } },
-      { session: mongoSession },
-    );
+    await setUnconfirmedPaymentSituation({
+      db,
+      owner: session.owner,
+      situation: 0,
+      mongoSession,
+    });
     const reconciliationReasons = [
       ...(!assignmentUpdated ? ['PAYMENT_ASSIGNMENT_NOT_FOUND'] : []),
       ...(session.codigoDesconto && !discountReleased

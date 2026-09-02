@@ -13,6 +13,7 @@
     "test:payments:integration": "node --experimental-strip-types --test --test-concurrency=1 \"app/lib/payments/__tests__/integration/*.test.ts\"",
     "migrate:payment-codes": "node scripts/migrations/setup-payment-codes.mjs",
     "migrate:payment-indexes": "node scripts/migrations/setup-payment-indexes.mjs",
+    "migrate:user-contract": "node --env-file-if-exists=.env.local scripts/migrations/setup-user-contract.mjs",
     "payment:credentials": "node scripts/payments/derive-payment-credentials.mjs"
   },
   "dependencies": {

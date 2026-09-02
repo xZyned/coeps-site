@@ -19,14 +19,37 @@ const validPayer = {
     complement: '',
 };
 
-function userDb(updateCalls: Array<Record<string, unknown>> = []) {
+function shell(owner: ObjectId, customerId = 'cus_existing') {
+    return {
+        _id: owner,
+        id_api: customerId,
+        isPos_registration: false,
+        informacoes_usuario: {
+            cpf: '', numero_telefone: '', nome: '', email: '',
+            data_criacao: new Date(), titulo_honorario: '',
+        },
+        pagamento: {
+            situacao: 0, tipo_pagamento: '', situacao_animacao: false,
+            lista_pagamentos: [],
+        },
+    };
+}
+
+function userDb(
+    updateCalls: Array<Record<string, unknown>> = [],
+    options: { provisioningError?: Error; matchedCount?: number; customerId?: string } = {},
+) {
     return {
         collection(name: string) {
             assert.equal(name, 'usuarios');
             return {
+                async findOneAndUpdate(filter: { _id: ObjectId }) {
+                    if (options.provisioningError) throw options.provisioningError;
+                    return shell(filter._id, options.customerId ?? 'cus_existing');
+                },
                 async updateOne(_filter: unknown, update: Record<string, unknown>) {
                     updateCalls.push(update);
-                    return { acknowledged: true, matchedCount: 1 };
+                    return { acknowledged: true, matchedCount: options.matchedCount ?? 1 };
                 },
             };
         },
@@ -70,7 +93,6 @@ test('Customer com id_api faz somente PUT e conserva o mesmo ID', async () => {
         db: userDb(),
         owner: new ObjectId('507f1f77bcf86cd799439011'),
         userId: '507f1f77bcf86cd799439011',
-        existingCustomerId: 'cus_existing',
         payer: validPayer,
         email: 'maria@example.com',
         apiUrl: 'https://api-sandbox.asaas.com/v3',
@@ -95,7 +117,6 @@ test('falha ao atualizar ID existente não cria Customer como fallback', async (
         db: userDb(),
         owner: new ObjectId('507f1f77bcf86cd799439011'),
         userId: '507f1f77bcf86cd799439011',
-        existingCustomerId: 'cus_existing',
         payer: validPayer,
         apiUrl: 'https://api-sandbox.asaas.com/v3',
         apiKey: 'test-key',
@@ -113,7 +134,6 @@ test('resposta inválida ao atualizar Customer exige revisão e não cria outro'
         db: userDb(updates),
         owner: new ObjectId('507f1f77bcf86cd799439011'),
         userId: '507f1f77bcf86cd799439011',
-        existingCustomerId: 'cus_existing',
         payer: validPayer,
         apiUrl: 'https://api-sandbox.asaas.com/v3',
         apiKey: 'test-key',
@@ -137,6 +157,41 @@ test('valida todos os dados do titular e usa IP real em produção', () => {
         headers: { 'x-forwarded-for': '203.0.113.10, 10.0.0.1' },
     });
     assert.equal(getPaymentRemoteIp(request), '203.0.113.10');
+});
+
+test('falha do bootstrap bloqueia qualquer chamada ao Asaas', async () => {
+    let gatewayCalls = 0;
+    const result = await preparePaymentCustomer({
+        db: userDb([], { provisioningError: new Error('mongo unavailable') }),
+        owner: new ObjectId('507f1f77bcf86cd799439011'),
+        userId: '507f1f77bcf86cd799439011',
+        payer: validPayer,
+        apiUrl: 'https://api-sandbox.asaas.com/v3',
+        apiKey: 'test-key',
+        fetchImpl: (async () => {
+            gatewayCalls += 1;
+            return Response.json({ id: 'should_not_exist' });
+        }) as typeof fetch,
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok === false) assert.equal(result.code, 'USER_PROVISIONING_FAILED');
+    assert.equal(gatewayCalls, 0);
+});
+
+test('Customer confirmado não recria proprietário removido durante a sincronização', async () => {
+    const result = await preparePaymentCustomer({
+        db: userDb([], { matchedCount: 0 }),
+        owner: new ObjectId('507f1f77bcf86cd799439011'),
+        userId: '507f1f77bcf86cd799439011',
+        payer: validPayer,
+        apiUrl: 'https://api-sandbox.asaas.com/v3',
+        apiKey: 'test-key',
+        fetchImpl: (async () => Response.json({ id: 'cus_existing' })) as typeof fetch,
+    });
+
+    assert.equal(result.ok, false);
+    if (result.ok === false) assert.equal(result.code, 'PAYMENT_OWNER_REVIEW_REQUIRED');
 });
 
 test('falha transitória pós-pagamento permanece PENDING e usa apenas PUT', async () => {

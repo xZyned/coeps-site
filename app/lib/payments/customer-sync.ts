@@ -6,6 +6,7 @@ import {
     normalizeAsaasCustomerAddress,
     type AsaasCustomerPayload,
 } from './customer-provisioning.ts';
+import { ensureUserShell } from '../users/user-shell.ts';
 
 export type PaymentCustomerInput = {
     name: string;
@@ -201,23 +202,13 @@ export async function updateExistingAsaasCustomer(input: {
     }
 }
 
-function defaultPaymentState(owner: ObjectId) {
-    return {
-        _id: owner,
-        situacao: 0,
-        lista_pagamentos: [],
-        situacao_animacao: false,
-        tipo_pagamento: '',
-    };
-}
-
 async function persistResolvedCustomer(
     db: Db,
     owner: ObjectId,
     customerId: string,
     now: Date,
 ) {
-    await db.collection('usuarios').updateOne(
+    const result = await db.collection('usuarios').updateOne(
         { _id: owner },
         {
             $set: {
@@ -229,23 +220,18 @@ async function persistResolvedCustomer(
                     lastSyncedAt: now,
                 },
             },
-            $setOnInsert: {
-                isPos_registration: false,
-                informacoes_usuario: {},
-                pagamento: defaultPaymentState(owner),
-            },
         },
-        { upsert: true },
     );
+    return result.matchedCount === 1;
 }
 
 export async function preparePaymentCustomer(input: {
     db: Db;
     owner: ObjectId;
     userId: string;
-    existingCustomerId?: unknown;
     payer: unknown;
     email?: unknown;
+    authName?: unknown;
     apiUrl: string;
     apiKey: string;
     fetchImpl?: typeof fetch;
@@ -257,12 +243,37 @@ export async function preparePaymentCustomer(input: {
     }
 
     const now = input.now ?? (() => new Date());
+    let provisionedUser;
+    try {
+        provisionedUser = await ensureUserShell({
+            db: input.db,
+            identity: {
+                sub: `auth0|${input.userId}`,
+                email: input.email,
+                name: input.authName,
+            },
+            now,
+        });
+        if (!provisionedUser.owner.equals(input.owner)) {
+            throw new Error('PAYMENT_OWNER_IDENTITY_MISMATCH');
+        }
+    } catch (error) {
+        console.error('PAYMENT_USER_SHELL_PROVISIONING_FAILED', {
+            code: error instanceof Error ? error.name : 'UNKNOWN',
+        });
+        return {
+            ok: false,
+            status: 503,
+            code: 'USER_PROVISIONING_FAILED',
+            message: 'Não foi possível confirmar sua conta antes de iniciar o pagamento.',
+        };
+    }
     const customer = buildAsaasCustomerPayload({
         userId: input.userId,
         payer: normalized.value,
         email: input.email,
     });
-    const storedCustomerId = optionalString(input.existingCustomerId);
+    const storedCustomerId = optionalString(provisionedUser.document.id_api);
 
     if (storedCustomerId) {
         const updated = await updateExistingAsaasCustomer({
@@ -274,7 +285,7 @@ export async function preparePaymentCustomer(input: {
         });
         if (updated.ok === false) {
             const reviewRequired = updated.status === 404 || !updated.retryable;
-            await input.db.collection('usuarios').updateOne(
+            const syncFailureUpdate = await input.db.collection('usuarios').updateOne(
                 { _id: input.owner, id_api: storedCustomerId },
                 {
                     $set: {
@@ -289,6 +300,14 @@ export async function preparePaymentCustomer(input: {
                     },
                 },
             );
+            if (syncFailureUpdate.matchedCount !== 1) {
+                return {
+                    ok: false,
+                    status: 409,
+                    code: 'PAYMENT_OWNER_REVIEW_REQUIRED',
+                    message: 'A conta vinculada ao pagamento exige revisão.',
+                };
+            }
             return {
                 ok: false,
                 status: updated.status === 404 ? 409 : updated.retryable ? 503 : 422,
@@ -298,7 +317,14 @@ export async function preparePaymentCustomer(input: {
                     : 'Não foi possível atualizar os dados do pagador no Asaas.',
             };
         }
-        await persistResolvedCustomer(input.db, input.owner, storedCustomerId, now());
+        if (!await persistResolvedCustomer(input.db, input.owner, storedCustomerId, now())) {
+            return {
+                ok: false,
+                status: 409,
+                code: 'PAYMENT_OWNER_REVIEW_REQUIRED',
+                message: 'A conta vinculada ao pagamento exige revisão.',
+            };
+        }
         return { ok: true, customerId: storedCustomerId, payer: normalized.value };
     }
 
@@ -340,6 +366,13 @@ export async function preparePaymentCustomer(input: {
         }
     }
 
-    await persistResolvedCustomer(input.db, input.owner, ensured.customerId, now());
+    if (!await persistResolvedCustomer(input.db, input.owner, ensured.customerId, now())) {
+        return {
+            ok: false,
+            status: 409,
+            code: 'PAYMENT_OWNER_REVIEW_REQUIRED',
+            message: 'O cliente foi localizado, mas a conta vinculada exige revisão.',
+        };
+    }
     return { ok: true, customerId: ensured.customerId, payer: normalized.value };
 }

@@ -63,10 +63,12 @@ test('pagamento provisiona Customer e cadastro posterior apenas sincroniza o ID 
     const sessionRoute = await readFile('app/api/v1/payment/session/route.ts', 'utf8');
     const preparation = await readFile('app/lib/payments/customer-sync.ts', 'utf8');
     const registration = await readFile('app/api/post/updateData/route.ts', 'utf8');
-    const customerLookup = sessionRoute.indexOf("db.collection('usuarios').findOne");
     const customerPreparation = sessionRoute.indexOf('await preparePaymentCustomer');
-    assert.ok(customerLookup >= 0, 'a sessão deve consultar o vínculo Asaas existente');
-    assert.ok(customerPreparation > customerLookup, 'a sessão deve provisionar o Customer após a consulta');
+    const userBootstrap = preparation.indexOf('await ensureUserShell');
+    const customerPayload = preparation.indexOf('const customer = buildAsaasCustomerPayload', userBootstrap);
+    assert.ok(customerPreparation >= 0, 'a sessão deve preparar o Customer');
+    assert.ok(userBootstrap >= 0, 'o pagamento deve garantir o usuário-base');
+    assert.ok(customerPayload > userBootstrap, 'o usuário-base deve existir antes de qualquer operação Asaas');
     assert.equal(sessionRoute.includes('payment_customer_not_found'), false);
     assert.equal(sessionRoute.includes('if (!user?.id_api)'), false);
     assert.match(preparation, /if \(storedCustomerId\)/);
@@ -77,6 +79,23 @@ test('pagamento provisiona Customer e cadastro posterior apenas sincroniza o ID 
     assert.equal(registration.includes('ensureAsaasCustomer'), false);
     assert.equal(registration.includes("method: 'POST'"), false);
     assert.equal(preparation.includes('city:'), false);
+    assert.equal(preparation.includes('{ upsert: true }'), false);
+    assert.match(preparation, /result\.matchedCount === 1/);
+});
+
+test('todos os iniciadores de cobrança exigem usuário-base antes do Asaas', async () => {
+    const customerSync = await readFile('app/lib/payments/customer-sync.ts', 'utf8');
+    assert.ok(customerSync.indexOf('await ensureUserShell') < customerSync.indexOf('await ensureAsaasCustomer'));
+    for (const route of [
+        'app/api/v1/payment/session/route.ts',
+        'app/api/payment/create_payment/route.js',
+        'app/api/payment/createCreditCardPayment/route.js',
+    ]) {
+        const source = await readFile(route, 'utf8');
+        assert.match(source, /await preparePaymentCustomer/);
+    }
+    const activity = await readFile('app/api/payment/createActivityPayment/route.js', 'utf8');
+    assert.ok(activity.indexOf('await ensureUserShell') < activity.indexOf('await fetch(ASAAS_API_URL'));
 });
 
 test('PIX confirma telefone no Customer antes de criar o checkout', async () => {

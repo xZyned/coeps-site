@@ -1,3 +1,4 @@
+import type { ObjectId } from "mongodb"
 import { IPayment } from "../payments/payment.t"
 
 export interface IUser {
@@ -48,4 +49,26 @@ export interface IUser {
         }
     },
     // "teste": true isso pode estar em alguns, mas é só para identificação diretamente no mongodb!!!
+}
+
+/** Documento como pode existir no Mongo durante cadastro, migração ou legado. */
+export type StoredUserDocument = {
+    _id?: ObjectId | IUser["_id"],
+    id_api?: unknown,
+    isPos_registration?: unknown,
+    informacoes_usuario?: Partial<IUser["informacoes_usuario"]> | Record<string, unknown> | null,
+    pagamento?: Partial<IPayment> | Record<string, unknown> | null,
+    consentimentos?: IUser["consentimentos"],
+    integracoes?: IUser["integracoes"],
+}
+
+/** Perfil que já passou pelo formulário congressista completo. */
+export type CompletedRegistration = Omit<IUser, "isPos_registration" | "informacoes_usuario"> & {
+    isPos_registration: true,
+    informacoes_usuario: IUser["informacoes_usuario"] & {
+        cpf: string,
+        numero_telefone: string,
+        nome: string,
+        email: string,
+    },
 }

@@ -17,6 +17,7 @@ import {
     requestCheckoutCancellation,
 } from './checkout-cancellation.ts';
 import { runPaymentTransaction } from './transactions.ts';
+import { setUnconfirmedPaymentSituation } from './user-state.ts';
 
 const SWITCH_LEASE_MS = 45_000;
 const REPLACEMENT_SESSION_MS = 15 * 60_000;
@@ -212,11 +213,13 @@ export async function completePixToCardSwitch(
         { session: mongoSession },
     );
 
-    await db.collection('usuarios').updateOne(
-        { _id: owner, 'pagamento.situacao': { $ne: 1 } },
-        { $set: { 'pagamento.situacao': 0 } },
-        { session: mongoSession },
-    );
+    await setUnconfirmedPaymentSituation({
+        db,
+        owner,
+        situation: 0,
+        mongoSession,
+        errorCode: 'PIX_SWITCH_OWNER_NOT_FOUND',
+    });
     return replacementSession;
 }
 

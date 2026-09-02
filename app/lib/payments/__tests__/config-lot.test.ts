@@ -13,6 +13,10 @@ test('conta comprador moderno uma unica vez e exige compraId ausente no legado',
     const db = {
         collection(name: string) {
             return {
+                aggregate() {
+                    const total = counts[name].shift() ?? 0;
+                    return { async toArray() { return total ? [{ totalVagas: total, totalSessoes: total }] : []; } };
+                },
                 async countDocuments(filter: Record<string, unknown>) {
                     calls.push({ collection: name, filter });
                     return counts[name].shift() ?? 0;

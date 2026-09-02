@@ -11,6 +11,7 @@ import { runPaymentTransaction } from '../../../lib/payments/transactions.ts';
 import { requestCheckoutCancellation } from '../../../lib/payments/checkout-cancellation.ts';
 import { switchPixSessionToCreditCard } from '../../../lib/payments/pix-switch.ts';
 import { cancelPaymentSession } from '../../../lib/payments/purchase-cancellation.ts';
+import { setUnconfirmedPaymentSituation } from '../../../lib/payments/user-state.ts';
 import {
     cancellationEligibleAtForDelinquency,
     gatewayDeletionWasConfirmed,
@@ -274,11 +275,12 @@ async function cancelUnpaidSession(
             undefined,
             mongoSession,
         );
-        await db.collection('usuarios').updateOne(
-            { _id: paymentSession.owner, 'pagamento.situacao': { $ne: 1 } },
-            { $set: { 'pagamento.situacao': 0 } },
-            { session: mongoSession },
-        );
+        await setUnconfirmedPaymentSituation({
+            db,
+            owner: paymentSession.owner as ObjectId,
+            situation: 0,
+            mongoSession,
+        });
         return true;
     });
 }
@@ -953,11 +955,12 @@ export async function POST(request: Request) {
                         { session: mongoSession },
                     );
                 }
-                await db.collection('usuarios').updateOne(
-                    { _id: lease.owner, 'pagamento.situacao': { $ne: 1 } },
-                    { $set: { 'pagamento.situacao': 2 } },
-                    { session: mongoSession },
-                );
+                await setUnconfirmedPaymentSituation({
+                    db,
+                    owner: lease.owner as ObjectId,
+                    situation: 2,
+                    mongoSession,
+                });
             });
             counters.recovered += 1;
             continue;

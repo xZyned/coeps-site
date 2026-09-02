@@ -6,6 +6,7 @@ import type {
     PaymentCodeDocument,
     PaymentCodeSnapshot,
 } from '@/lib/types/payments/paymentCode.t';
+import { assertPaymentOwnerUpdate } from './user-state.ts';
 
 export const PAYMENT_CODES_COLLECTION = 'pagamentos.codigos';
 export const PAYMENT_ASSIGNMENTS_COLLECTION = 'pagamentos.atribuicoes';
@@ -495,31 +496,74 @@ export async function updateUserRegistrationAfterRefund(
     );
 
     if (otherConfirmed) {
-        await db.collection('usuarios').updateOne(
-            { _id: usuarioId, 'pagamento.compraId': refundedPurchaseId },
-            {
-                $set: {
-                    'pagamento.situacao': 1,
-                    'pagamento.edicaoId': edicaoId,
-                    'pagamento.compraId': otherConfirmed.compraId,
+        const userUpdate = await db.collection('usuarios').updateOne(
+            { _id: usuarioId },
+            [
+                {
+                    $set: {
+                        'pagamento.situacao': {
+                            $cond: [
+                                { $eq: ['$pagamento.compraId', refundedPurchaseId] },
+                                1,
+                                '$pagamento.situacao',
+                            ],
+                        },
+                        'pagamento.edicaoId': {
+                            $cond: [
+                                { $eq: ['$pagamento.compraId', refundedPurchaseId] },
+                                edicaoId,
+                                '$pagamento.edicaoId',
+                            ],
+                        },
+                        'pagamento.compraId': {
+                            $cond: [
+                                { $eq: ['$pagamento.compraId', refundedPurchaseId] },
+                                otherConfirmed.compraId,
+                                '$pagamento.compraId',
+                            ],
+                        },
+                    },
                 },
-            },
+            ],
             { session: mongoSession },
         );
+        assertPaymentOwnerUpdate(userUpdate);
         return;
     }
 
-    await db.collection('usuarios').updateOne(
-        { _id: usuarioId, 'pagamento.compraId': refundedPurchaseId },
-        {
-            $set: {
-                'pagamento.situacao': 0,
-                'pagamento.refundedAt': new Date(),
+    const refundedAt = new Date();
+    const userUpdate = await db.collection('usuarios').updateOne(
+        { _id: usuarioId },
+        [
+            {
+                $set: {
+                    'pagamento.situacao': {
+                        $cond: [
+                            { $eq: ['$pagamento.compraId', refundedPurchaseId] },
+                            0,
+                            '$pagamento.situacao',
+                        ],
+                    },
+                    'pagamento.refundedAt': {
+                        $cond: [
+                            { $eq: ['$pagamento.compraId', refundedPurchaseId] },
+                            refundedAt,
+                            '$pagamento.refundedAt',
+                        ],
+                    },
+                    'pagamento.compraId': {
+                        $cond: [
+                            { $eq: ['$pagamento.compraId', refundedPurchaseId] },
+                            '$$REMOVE',
+                            '$pagamento.compraId',
+                        ],
+                    },
+                },
             },
-            $unset: { 'pagamento.compraId': '' },
-        },
+        ],
         { session: mongoSession },
     );
+    assertPaymentOwnerUpdate(userUpdate);
 }
 
 export async function updatePaymentAssignment(

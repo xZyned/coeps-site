@@ -21,6 +21,32 @@ Os endpoints de autenticação do Auth0 v4 são `/auth/login` e `/auth/logout`.
 As variáveis legadas `AUTH0_ISSUER_BASE_URL` e `AUTH0_BASE_URL` ainda são
 aceitas temporariamente, mas `AUTH0_DOMAIN` e `APP_BASE_URL` têm precedência.
 
+O callback do Auth0 confirma o usuário-base no Mongo antes de salvar a sessão.
+Enquanto o Action pós-registro legado estiver ativo, configure nele um header
+`Authorization: Bearer <AUTH0_POST_REGISTRATION_SECRET>` ao chamar
+`POST /api/pos_registration01`. Depois de validar o callback síncrono em
+produção, desative o Action e remova a variável e o endpoint de compatibilidade.
+
+## Contrato estrutural de usuários
+
+Audite o banco antes de habilitar o validador da coleção `usuarios`:
+
+```powershell
+npm run migrate:user-contract -- --database <MONGODB_DB>
+```
+
+O comando é somente leitura por padrão, não imprime dados pessoais e retorna um
+digest. O modo de aplicação normaliza apenas estruturas técnicas e flags `0/1`;
+ele não copia dados do pagador no Asaas para o perfil congressista:
+
+```powershell
+npm run migrate:user-contract -- --database <MONGODB_DB> --apply --confirm <DIGEST>
+```
+
+O `--apply` é bloqueado quando encontra tipos incompatíveis ou `id_api`
+duplicado. Somente depois de uma auditoria final sem violações ele cria o índice
+único parcial de `id_api` e o validador estrutural do Mongo.
+
 ## Verificação
 
 ```powershell

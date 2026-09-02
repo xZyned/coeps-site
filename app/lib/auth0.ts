@@ -1,4 +1,6 @@
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
+import { connectToDatabase } from "./mongodb";
+import { ensureUserShell } from "./users/user-shell";
 
 function normalizeDomain(value?: string) {
   return value
@@ -26,6 +28,18 @@ export const auth0 = isAuth0Configured
       domain: auth0Domain,
       appBaseUrl,
       signInReturnToPath: "/painel",
+      beforeSessionSaved: async (session) => {
+        const { db } = await connectToDatabase();
+        await ensureUserShell({
+          db,
+          identity: {
+            sub: session.user?.sub,
+            email: session.user?.email,
+            name: session.user?.name,
+          },
+        });
+        return session;
+      },
     })
   : null;
 

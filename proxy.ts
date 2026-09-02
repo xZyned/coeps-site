@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuth0Client, isAuth0Configured } from './app/lib/auth0';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'bson';
-import { IUser } from '@/lib/types/user/user.t';
+import { StoredUserDocument } from '@/lib/types/user/user.t';
 import {
   AUTH_MIGRATION_GATE_COOKIE_NAME,
   buildAuthEntryPath,
@@ -87,7 +87,7 @@ export async function proxy(req) {
     }
     return auth0.startInteractiveLogin({ returnTo });
   }
-  const user: IUser | null = await db.collection("usuarios").findOne({ _id: new ObjectId(userId) });
+  const user: StoredUserDocument | null = await db.collection("usuarios").findOne({ _id: new ObjectId(userId) });
 
   // 6. Pagamento vem antes do cadastro completo. A confirmação financeira
   // é a única condição que libera o formulário congressista e a LGPD.

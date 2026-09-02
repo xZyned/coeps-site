@@ -5,6 +5,7 @@ import { connectToDatabase } from '@/app/lib/mongodb';
 import { DateTime } from "luxon"
 import { asaasRequestHeaders } from '@/lib/payments/asaas';
 import { isPaymentSalesEnabled, paymentSalesPausedResponse } from '@/lib/payments/sales';
+import { ensureUserShell } from '@/lib/users/user-shell';
 //
 //
 //
@@ -22,6 +23,28 @@ export const POST = withApiAuthRequired(async function POST(request) {
         //
         //
         const { db } = await connectToDatabase()
+        let provisionedUser;
+        try {
+            provisionedUser = await ensureUserShell({
+                db,
+                identity: {
+                    sub: user.sub,
+                    email: user.email,
+                    name: user.name,
+                },
+            });
+        } catch (error) {
+            console.error('ACTIVITY_PAYMENT_USER_SHELL_PROVISIONING_FAILED', {
+                code: error instanceof Error ? error.name : 'UNKNOWN',
+            });
+            return Response.json(
+                {
+                    error: 'user_provisioning_failed',
+                    message: 'Não foi possível confirmar sua conta antes de iniciar o pagamento.',
+                },
+                { status: 503 },
+            );
+        }
         const collection = 'minicursos'
 
         // Verifica se o usuário tem 4 ou menos inscrições
@@ -147,20 +170,10 @@ export const POST = withApiAuthRequired(async function POST(request) {
         const desconto = 0
 
         // Puxando id API
-        const userInfos = await db.collection("usuarios").find(
-            { _id: new ObjectId(_id) },
-            {
-                projection: {
-                    _id: 0,
-                    id_api: 1
-                }
-            }
-        ).toArray()
-
-        if (userInfos.length == 0) {
-            return Response.json({ message: 'Ocorreu algum erro, por favor recarregue a página! [userInfos.length == 0]' }, { status: 500 });
-        }
-        if (!userInfos[0].id_api) {
+        const customerId = typeof provisionedUser.document.id_api === 'string'
+            ? provisionedUser.document.id_api.trim()
+            : '';
+        if (!customerId) {
             return Response.json({ message: 'Ocorreu algum erro, por favor recarregue a página! [!userInfos[0].id_api]' }, { status: 500 });
         }
 
@@ -176,7 +189,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
                 billingType: 'PIX',
                 discount: { value: desconto },
                 callback: { successUrl: urlCallback, autoRedirect: false },
-                customer: userInfos[0].id_api,
+                customer: customerId,
                 value: valor,
                 dueDate: data_vencimento,
                 postalService: false,

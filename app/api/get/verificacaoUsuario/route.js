@@ -4,6 +4,7 @@ import { getAccessToken } from '@/lib/auth0-compat';
 import { ObjectId } from 'mongodb';
 import { getSession } from '@/lib/auth0-compat';
 import { withApiAuthRequired } from '@/lib/auth0-compat';
+import { normalizeUserDocument } from '@/lib/users/user-contract';
 //
 //
 // Exemplo de return:
@@ -31,15 +32,19 @@ export const GET = withApiAuthRequired(async function GET(request, response) {
         const { db } = await connectToDatabase();
         const colecao = 'usuarios'
 
-        const response = await db.collection(colecao).find(
+        const userDocument = await db.collection(colecao).findOne(
             {
                 "_id": new ObjectId(userId)
             },
             { projection: { 'informacoes_usuario': 1, 'pagamento.situacao_animacao':1,'pagamento.situacao': 1, 'isPos_registration': 1, '_id': 0 } }
-        ).toArray()
+        )
+        const normalized = normalizeUserDocument(userDocument)
 
         return NextResponse.json({
-            ...response[0]
+            informacoes_usuario: normalized.informacoes_usuario,
+            pagamento: normalized.pagamento,
+            isPos_registration: normalized.isPos_registration,
+            cadastroPendente: normalized.cadastroPendente,
         }, { status: 200 });
 
     }

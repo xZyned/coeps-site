@@ -53,11 +53,6 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
 
         const { db, client } = await connectToDatabase();
         const owner = new ObjectId(userId);
-        const user = await db.collection('usuarios').findOne(
-            { _id: owner },
-            { projection: { id_api: 1 } },
-        );
-
         const config = await getActivePaymentConfig(db);
         if (!config) {
             return NextResponse.json(
@@ -170,9 +165,9 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
             db,
             owner,
             userId,
-            existingCustomerId: user?.id_api,
             payer: payerInput,
             email: authSession?.user?.email,
+            authName: authSession?.user?.name,
             apiUrl,
             apiKey,
         });

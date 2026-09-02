@@ -1,52 +1,64 @@
-import { ObjectId } from 'mongodb';
-import { connectToDatabase } from '../../lib/mongodb'
-import { withApiAuthRequired } from '@/lib/auth0-compat';
-//
-//
-//Nome webwook -> pos_registration01
+import { timingSafeEqual } from 'node:crypto';
+import { connectToDatabase } from '../../lib/mongodb';
+import {
+    UserProvisioningError,
+    ensureUserShell,
+} from '@/lib/users/user-shell';
+
+function bearerToken(request) {
+    return request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || '';
+}
+
+function secretsMatch(received, configured) {
+    if (!received || !configured) return false;
+    const receivedBuffer = Buffer.from(received);
+    const configuredBuffer = Buffer.from(configured);
+    return receivedBuffer.length === configuredBuffer.length &&
+        timingSafeEqual(receivedBuffer, configuredBuffer);
+}
+
 /**
- * É responsável por criar o "esqueleto do usuário no DB. é execudado sempre que um novo usuário é criado a mandado do Auth0.
- * Se ele não criar o esqueleto, não há como continuar na conta.
+ * Compatibilidade temporária com o Action pós-registro do Auth0.
+ * O callback síncrono do site também chama o mesmo helper antes de salvar a sessão.
  */
-
-// https://sandbox.asaas.com/api/v3/customers
 export async function POST(request) {
+    const configuredSecret = process.env.AUTH0_POST_REGISTRATION_SECRET;
+    if (!configuredSecret) {
+        return Response.json(
+            { error: 'auth0_post_registration_not_configured' },
+            { status: 503 },
+        );
+    }
+    if (!secretsMatch(bearerToken(request), configuredSecret)) {
+        return Response.json({ error: 'unauthorized' }, { status: 401 });
+    }
 
-
-    const { searchParams } = new URL(request.url)
-    const requestData = await request.json()
-    const email = requestData.usuario_email;
-    const nome = requestData.usuario_nome;
-    const user_id = requestData.usuario_id.replace("auth0|", "");
-    const data_criacao = new Date() // ele manda a data criação mas eu nao estou usando.
-
+    let requestData;
+    try {
+        requestData = await request.json();
+    } catch {
+        return Response.json({ error: 'invalid_json' }, { status: 400 });
+    }
 
     try {
         const { db } = await connectToDatabase();
-
-        const result = await db.collection('usuarios').insertOne({
-            "_id": new ObjectId(user_id),
-            "id_api": "",
-            "isPos_registration": false,
-            "informacoes_usuario": {
-                "cpf": "",
-                "numero_telefone": "",
-                "nome": "",
-                "email": email,
-                "data_criacao": data_criacao,
-                "titulo_honorario": ""
+        await ensureUserShell({
+            db,
+            identity: {
+                sub: requestData?.usuario_id,
+                email: requestData?.usuario_email,
+                name: requestData?.usuario_nome,
             },
-            "pagamento": {
-                "situacao": 0,// O zero sinaliza que ainda não há pagamento aprovado.
-                "tipo_pagamento": "",
-                "situacao_animacao": false,
-                "lista_pagamentos": [],
-            }
-
         });
-        return Response.json({ "sucesso": "Ocorreu tudo certo" })
-    }
-    catch (error) {
-        return Response.json({ "erro": error })
+        return Response.json({ success: true }, { status: 200 });
+    } catch (error) {
+        const code = error instanceof UserProvisioningError
+            ? error.code
+            : 'USER_SHELL_PROVISIONING_FAILED';
+        console.error('AUTH0_USER_SHELL_PROVISIONING_FAILED', { code });
+        return Response.json(
+            { error: code.toLowerCase() },
+            { status: code === 'INVALID_AUTH0_SUBJECT' ? 400 : 500 },
+        );
     }
 }

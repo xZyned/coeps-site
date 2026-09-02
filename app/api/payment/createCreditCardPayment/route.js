@@ -97,10 +97,7 @@ export const POST = withApiAuthRequired(async function POST(request) {
 
     const owner = new ObjectId(userId);
     const { db, client } = await connectToDatabase();
-    const [user, config] = await Promise.all([
-      db.collection('usuarios').findOne({ _id: owner }, { projection: { id_api: 1 } }),
-      getActivePaymentConfig(db),
-    ]);
+    const config = await getActivePaymentConfig(db);
     if (!config) {
       return Response.json({ error: 'payment_config_not_found', message: 'Pagamento indisponível.' }, { status: 404 });
     }
@@ -170,9 +167,9 @@ export const POST = withApiAuthRequired(async function POST(request) {
       db,
       owner,
       userId,
-      existingCustomerId: user?.id_api,
       payer: data.payer ?? data.personalInfo,
       email: authSession?.user?.email,
+      authName: authSession?.user?.name,
       apiUrl,
       apiKey,
     });

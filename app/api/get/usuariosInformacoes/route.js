@@ -4,6 +4,7 @@ import { getAccessToken } from '@/lib/auth0-compat';
 import { execOnce } from 'next/dist/shared/lib/utils';
 import { ObjectId } from 'mongodb';
 import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
+import { normalizeUserDocument } from '@/lib/users/user-contract';
 //
 //
 // Exemplo de return:
@@ -26,11 +27,11 @@ export const GET = withApiAuthRequired((async function GET( request, { params } 
         //
         // Já vem apenas com o replace.
         const { db } = await connectToDatabase();
-        const result = await db.collection('usuarios').find(
+        const result = await db.collection('usuarios').findOne(
             {"_id":new ObjectId(userId) },
             { projection: { "informacoes_usuario": 1,"isPos_registration":1, _id: 1,"pagamento.situacao":1 } }
-        ).toArray()
-        return NextResponse.json({ "data": result[0] });
+        )
+        return NextResponse.json({ "data": normalizeUserDocument(result) });
 
     }
     catch {

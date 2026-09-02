@@ -1204,6 +1204,19 @@ test('timeout na desistencia PIX permanece RETRYABLE e pode ser conciliado depoi
             usuarioId: owner,
             status: 'PAGAMENTO_PENDENTE',
         }),
+        db.collection('usuarios').insertOne({
+            _id: owner,
+            id_api: 'cus_retry_cancel',
+            isPos_registration: false,
+            informacoes_usuario: {
+                cpf: '', numero_telefone: '', nome: '', email: '',
+                data_criacao: new Date(), titulo_honorario: '',
+            },
+            pagamento: {
+                situacao: 2, tipo_pagamento: '', situacao_animacao: false,
+                lista_pagamentos: [],
+            },
+        }),
     ]);
     const timeoutFetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
         if (init?.method === 'POST') throw new Error('timeout');
@@ -1235,6 +1248,40 @@ test('timeout na desistencia PIX permanece RETRYABLE e pode ser conciliado depoi
         (await db.collection('pagamentos.sessoes').findOne({ _id: purchaseId }))?.status,
         'CANCELLED',
     );
+});
+
+test('cancelamento não recria proprietário ausente e preserva a transação para revisão', async () => {
+    const db = client.db('webhook_tests');
+    const owner = new ObjectId();
+    const purchaseId = new ObjectId();
+    await Promise.all([
+        db.collection('pagamentos.sessoes').insertOne({
+            _id: purchaseId,
+            activeKey: `CIEPS-2026:${owner.toHexString()}:ticket`,
+            owner,
+            edicaoId: 'CIEPS-2026',
+            type: 'ticket',
+            status: 'OPEN',
+            expiresAt: new Date(Date.now() + 15 * 60_000),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        }),
+        db.collection('pagamentos.atribuicoes').insertOne({
+            compraId: purchaseId,
+            usuarioId: owner,
+            status: 'ABERTA',
+        }),
+    ]);
+
+    const result = await cancelPaymentSession({ db, client, owner, sessionId: purchaseId });
+    const [session, missingOwner] = await Promise.all([
+        db.collection('pagamentos.sessoes').findOne({ _id: purchaseId }),
+        db.collection('usuarios').findOne({ _id: owner }),
+    ]);
+    assert.equal(result.kind, 'pending');
+    assert.equal(session?.status, 'OPEN');
+    assert.equal(session?.purchaseCancellation?.status, 'RETRYABLE');
+    assert.equal(missingOwner, null);
 });
 
 test('falha transacional local preserva sessao OPEN e seus recursos', async () => {
