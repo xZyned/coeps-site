@@ -24,6 +24,7 @@ import './style.css';
 import PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
 import type { PaymentAmountsByMethod, PaymentAmountsSnapshot } from '@/lib/types/payments/paymentCode.t';
 import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { resolveSelectedCreditCardAmounts } from '@/lib/payments/installments';
 
 type PaymentConfigView = IPaymentConfig & {
     sessaoPagamentoAutomáticoAtiva: PaymentTicketProps | false;
@@ -74,6 +75,21 @@ function formatCurrencyFromCents(value: number) {
         style: 'currency',
         currency: 'BRL',
     }).format(value / 100);
+}
+
+function installmentPresentation(
+    source: Parameters<typeof resolveSelectedCreditCardAmounts>[0],
+    selectedCode: unknown,
+) {
+    const amounts = resolveSelectedCreditCardAmounts(source, selectedCode);
+    if (!amounts) return null;
+    const { installmentCount, regularInstallmentCents, lastInstallmentCents, finalCents } = amounts;
+    const detail = installmentCount === 1
+        ? `1 parcela de ${formatCurrencyFromCents(finalCents)}`
+        : regularInstallmentCents === lastInstallmentCents
+            ? `${installmentCount} parcelas de ${formatCurrencyFromCents(regularInstallmentCents)}`
+            : `${installmentCount - 1} parcelas de ${formatCurrencyFromCents(regularInstallmentCents)} e a última de ${formatCurrencyFromCents(lastInstallmentCents)}`;
+    return { detail, total: formatCurrencyFromCents(finalCents) };
 }
 
 function normalizePaymentCode(value: string) {
@@ -2039,11 +2055,16 @@ const PaymentForm = ({
                                         {
 
                                             dataPaymentConfig.sessaoPagamentoAutomáticoAtiva.paymentConfig.precos.parcelamentos?.map((value) => {
+                                                const presentation = installmentPresentation(
+                                                    dataPaymentConfig.sessaoPagamentoAutomáticoAtiva,
+                                                    value.codigo,
+                                                );
+                                                if (!presentation) return null;
                                                 return (
                                                     <button type="button" key={value.codigo} aria-pressed={value.codigo == idPagamento} className={`w-full cursor-pointer p-5 text-left ${value.codigo == idPagamento ? 'bg-[var(--cieps-red)] text-white' : "bg-[rgba(239,159,39,.16)] text-[var(--cieps-ink)]"}`} onClick={() => {
                                                         handleIdPagamento(value.codigo)
                                                         setTextoPagametoEscolhido(
-                                                            `Você escolheu realizar o pagamento em ${value.totalParcelas} parcelas de R$ ${value.valorCadaParcela.toFixed(2)}, totalizando R$${(value.valorCadaParcela * value.totalParcelas).toFixed(2)}`
+                                                            `Você escolheu realizar o pagamento em ${presentation.detail}, totalizando ${presentation.total}`
                                                         )
 
                                                     }}
@@ -2054,7 +2075,7 @@ const PaymentForm = ({
                                                             </p>
                                                         </div>
                                                         <h1>
-                                                            Quero realizar o pagamento em <span className='font-bold'>{value.totalParcelas} parcelas de R${value.valorCadaParcela.toFixed(2)}</span>, totalizando <span className='font-bold'>R${(value.valorCadaParcela * value.totalParcelas).toFixed(2)}</span>.
+                                                            Quero realizar o pagamento em <span className='font-bold'>{presentation.detail}</span>, totalizando <span className='font-bold'>{presentation.total}</span>.
                                                         </h1>
                                                     </button>
                                                 )

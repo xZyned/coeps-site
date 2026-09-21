@@ -8,6 +8,7 @@ import type { IPayment } from '@/app/lib/types/payments/payment.t';
 import type { PaymentAmountsByMethod, PaymentAmountsSnapshot } from '@/lib/types/payments/paymentCode.t';
 import type PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
 import { fetchWithTimeout } from '@/lib/client/fetchWithTimeout';
+import { resolveSelectedCreditCardAmounts } from '@/lib/payments/installments';
 import TermModal, { type ModalProps } from '@/components/TermModal';
 import {
   AsyncStatePanel,
@@ -39,6 +40,8 @@ type PaymentCodesPreview = {
     final: ILoteAutomatico;
   };
   valoresCentavos: PaymentAmountsSnapshot;
+  perfilUtilizador: 'ORGANIZADOR' | 'CONGRESSISTA';
+  origemPreco: 'LOTE' | 'DESCONTO_PERCENTUAL' | 'ORGANIZADOR_CONFIGURADO';
 };
 
 type PersonalInfo = {
@@ -97,6 +100,21 @@ function formatCurrency(value: number) {
 
 function formatCurrencyFromCents(value: number) {
   return formatCurrency(value / 100);
+}
+
+function installmentPresentation(
+  source: Parameters<typeof resolveSelectedCreditCardAmounts>[0],
+  selectedCode: unknown,
+) {
+  const amounts = resolveSelectedCreditCardAmounts(source, selectedCode);
+  if (!amounts) return null;
+  const { installmentCount, regularInstallmentCents, lastInstallmentCents, finalCents } = amounts;
+  const detail = installmentCount === 1
+    ? `1 parcela de ${formatCurrencyFromCents(finalCents)}`
+    : regularInstallmentCents === lastInstallmentCents
+      ? `${installmentCount} parcelas de ${formatCurrencyFromCents(regularInstallmentCents)}`
+      : `${installmentCount - 1} parcelas de ${formatCurrencyFromCents(regularInstallmentCents)} e a última de ${formatCurrencyFromCents(lastInstallmentCents)}`;
+  return { detail, total: formatCurrencyFromCents(finalCents) };
 }
 
 function normalizePaymentCode(value: string) {
@@ -219,6 +237,18 @@ export default function PagamentosManual({
   const active = isConfigActive(config);
   const hasInformedCodes = Boolean(normalizePaymentCode(codigoDesconto) || normalizePaymentCode(codigoRastreio));
   const displayedInstallments = codesPreview?.lote.final.precos.parcelamentos ?? config.parcelamentos;
+  const displayedInstallmentSource = codesPreview
+    ? {
+        paymentConfig: { precos: codesPreview.lote.final.precos },
+        paymentConfigOriginal: { precos: codesPreview.lote.original.precos },
+        valoresCentavos: codesPreview.valoresCentavos,
+        perfilUtilizador: codesPreview.perfilUtilizador,
+        origemPreco: codesPreview.origemPreco,
+      }
+    : {
+        paymentConfig: { precos: { parcelamentos: config.parcelamentos } },
+        paymentConfigOriginal: { precos: { parcelamentos: config.parcelamentos } },
+      };
 
   const resetCodesPreview = () => {
     setCodesPreview(null);
@@ -726,18 +756,23 @@ export default function PagamentosManual({
             <fieldset className="sm:col-span-2">
               <legend className="mb-3 text-sm font-bold text-tinta">Opções de parcelamento</legend>
               <div className="grid gap-3 sm:grid-cols-2">
-                {displayedInstallments.map((installment) => (
-                  <button
+                {displayedInstallments.map((installment) => {
+                  const presentation = installmentPresentation(
+                    displayedInstallmentSource,
+                    installment.codigo,
+                  );
+                  if (!presentation) return null;
+                  return <button
                     key={installment.codigo}
                     type="button"
                     aria-pressed={selectedInstallment === installment.codigo}
                     onClick={() => setSelectedInstallment(installment.codigo)}
                     className={`min-h-12 rounded-md border p-4 text-left text-sm transition-colors ${selectedInstallment === installment.codigo ? 'border-goles bg-goles/10 text-tinta' : 'border-linha bg-white text-muted hover:border-goles/50'}`}
                   >
-                    <strong className="block text-tinta">{installment.totalParcelas}x de {formatCurrency(installment.valorCadaParcela)}</strong>
-                    Total de {formatCurrency(installment.totalParcelas * installment.valorCadaParcela)}
+                    <strong className="block text-tinta">{presentation.detail}</strong>
+                    Total de {presentation.total}
                   </button>
-                ))}
+                })}
               </div>
             </fieldset>
           </div>
