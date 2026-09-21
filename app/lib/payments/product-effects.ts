@@ -2,7 +2,7 @@ import type { ClientSession, Db, Document } from 'mongodb';
 import {
     isRemoteWorkSession,
     REMOTE_WORK_ACCESS_COLLECTION,
-} from '@/lib/remote-work-access';
+} from '../remote-work-access.ts';
 
 export async function markProductPaymentPending(
     db: Db,

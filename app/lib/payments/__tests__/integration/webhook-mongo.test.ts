@@ -1,6 +1,7 @@
 import test, { after, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
@@ -10,6 +11,10 @@ import { updateUserRegistrationAfterRefund } from '../../codes.ts';
 import { switchPixSessionToCreditCard } from '../../pix-switch.ts';
 import { cancelPaymentSession } from '../../purchase-cancellation.ts';
 import { countReservedTicketPlaces } from '../../config.ts';
+import {
+    ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
+    expectedInstallmentValueCents,
+} from '../../installments.ts';
 import {
     CUSTOMER_PROVISIONING_COLLECTION,
     ensureAsaasCustomer,
@@ -30,6 +35,7 @@ import {
 let replicaSet: MongoMemoryReplSet;
 let client: MongoClient;
 const execFileAsync = promisify(execFile);
+const TEST_DATABASE_NAME = `webhook_tests_${randomUUID().replaceAll('-', '')}`;
 
 before(async () => {
     replicaSet = await MongoMemoryReplSet.create({
@@ -49,12 +55,19 @@ after(async () => {
 });
 
 beforeEach(async () => {
-    await client.db('webhook_tests').dropDatabase();
+    const memoryServerUri = replicaSet.getUri();
+    if (
+        !/^mongodb:\/\/(127\.0\.0\.1|localhost|\[::1\]):/.test(memoryServerUri) ||
+        !TEST_DATABASE_NAME.startsWith('webhook_tests_')
+    ) {
+        throw new Error('Unsafe integration database target.');
+    }
+    await client.db(TEST_DATABASE_NAME).dropDatabase();
     clearWebhookLedgerReadinessCache();
 });
 
 async function createLedgerIndexes() {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     await db.collection(WEBHOOK_EVENTS_V2_COLLECTION).createIndexes([
         {
             key: { provider: 1, eventId: 1 },
@@ -86,7 +99,7 @@ function customerPayload(userId: string) {
 }
 
 test('provisionamento concorrente faz um unico POST de customer', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const userId = new ObjectId().toHexString();
     let lookupCalls = 0;
     let createCalls = 0;
@@ -124,7 +137,7 @@ test('provisionamento concorrente faz um unico POST de customer', async () => {
 });
 
 test('resposta perdida do POST e recuperada por GET sem segundo POST', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const userId = new ObjectId().toHexString();
     let customerExists = false;
     let createCalls = 0;
@@ -172,7 +185,7 @@ test('resposta perdida do POST e recuperada por GET sem segundo POST', async () 
 });
 
 test('customers duplicados ficam em revisao sem novo POST', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const userId = new ObjectId().toHexString();
     let createCalls = 0;
     const fetchMock = (async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -209,7 +222,7 @@ test('customers duplicados ficam em revisao sem novo POST', async () => {
 });
 
 test('resposta de lookup malformada falha fechada sem criar customer', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const userId = new ObjectId().toHexString();
     let createCalls = 0;
     const fetchMock = (async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -251,6 +264,12 @@ async function seedModernPayment(
     const invoiceNumber = options.invoiceNumber || `inv_${purchaseId.toHexString()}`;
     const customer = options.customer || `cus_${owner.toHexString()}`;
     const method = options.method || 'CREDIT_CARD';
+    const selectedValueCents = options.installmentPlan
+        ? Number(options.installmentPlan.totalValueCentavos)
+        : 500;
+    const firstPaymentValueCents = options.installmentPlan
+        ? expectedInstallmentValueCents(options.installmentPlan, 1)
+        : 500;
     await db.collection('usuarios').insertOne({
         _id: owner,
         id_api: customer,
@@ -276,7 +295,7 @@ async function seedModernPayment(
         metodoPagamento: method,
         paymentId,
         invoiceNumber,
-        valorSelecionadoCentavos: { final: options.installmentPlan ? 1500 : 500 },
+        valorSelecionadoCentavos: { final: selectedValueCents },
         ...(options.installmentPlan ? { installmentPlan: options.installmentPlan } : {}),
     });
     await db.collection('pagamentos.atribuicoes').insertOne({
@@ -284,7 +303,7 @@ async function seedModernPayment(
         usuarioId: owner,
         edicaoId: 'CIEPS-2026',
         status: status === 'CONFIRMED' ? 'CONFIRMADA' : 'PAGAMENTO_PENDENTE',
-        valorSelecionadoCentavos: { final: options.installmentPlan ? 1500 : 500 },
+        valorSelecionadoCentavos: { final: selectedValueCents },
         pagamento: { paymentId, invoiceNumber, metodo: method },
         ...(options.installmentPlan ? { installmentPlan: options.installmentPlan } : {}),
     });
@@ -303,7 +322,7 @@ async function seedModernPayment(
             invoiceNumber,
             customer,
             externalReference: String(purchaseId),
-            value: options.installmentPlan ? 5 : 5,
+            value: Number(firstPaymentValueCents) / 100,
             billingType: method,
             status: status === 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
             ...(options.installmentPlan
@@ -314,7 +333,7 @@ async function seedModernPayment(
 }
 
 test('readiness negativa nao fica presa no cache depois que o indice e criado', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     assert.equal(await ensureWebhookLedgerReady(db), false);
     await db.collection(WEBHOOK_EVENTS_V2_COLLECTION).createIndex(
         { provider: 1, eventId: 1 },
@@ -324,7 +343,7 @@ test('readiness negativa nao fica presa no cache depois que o indice e criado', 
 });
 
 test('reproduz a projecao invalida e encontra exatamente o segundo pagamento com a correcao', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const customer = 'cus_fixture';
     await db.collection('usuarios').insertOne({
         id_api: customer,
@@ -441,7 +460,7 @@ test('FAILED volta ao mesmo documento e incrementa attempts depois do backoff', 
 });
 
 test('uma falha no meio da transacao reverte todas as mutacoes financeiras', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const purchaseId = new ObjectId();
     await db.collection('pagamentos.sessoes').insertOne({ _id: purchaseId, status: 'PAYMENT_PENDING' });
     await db.collection('pagamentos.atribuicoes').insertOne({ compraId: purchaseId, status: 'PAGAMENTO_PENDENTE' });
@@ -468,9 +487,9 @@ test('uma falha no meio da transacao reverte todas as mutacoes financeiras', asy
 });
 
 test('PAYMENT_CONFIRMED valida e confirma atomicamente sessao, usuario, atribuicao e comprovante', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     process.env.MONGODB_URI = replicaSet.getUri();
-    process.env.MONGODB_DB = 'webhook_tests';
+    process.env.MONGODB_DB = TEST_DATABASE_NAME;
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -543,7 +562,7 @@ test('PAYMENT_CONFIRMED valida e confirma atomicamente sessao, usuario, atribuic
 });
 
 test('divergencia do desconto nao apaga a verdade financeira da confirmacao', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -609,7 +628,7 @@ test('divergencia do desconto nao apaga a verdade financeira da confirmacao', as
 });
 
 test('valor divergente vai para revisao sem liberar acesso nem confirmar atribuicao', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -674,7 +693,7 @@ test('valor divergente vai para revisao sem liberar acesso nem confirmar atribui
 });
 
 test('atribuicao sem sessao fica em revisao e nao e confirmada pelo caminho legado', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -722,7 +741,7 @@ test('atribuicao sem sessao fica em revisao e nao e confirmada pelo caminho lega
 
 test('handler recusa webhook sem configuracao ou token e aceita somente o header oficial', async () => {
     process.env.MONGODB_URI = replicaSet.getUri();
-    process.env.MONGODB_DB = 'webhook_tests';
+    process.env.MONGODB_DB = TEST_DATABASE_NAME;
     process.env.ASAAS_API_URL = 'https://api-sandbox.asaas.com/v3';
     const { POST, handleAsaasWebhookRequest } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
@@ -798,7 +817,7 @@ test('handler recusa webhook sem configuracao ou token e aceita somente o header
 });
 
 test('troca PIX cancelada no Asaas cria uma unica sessao de cartao e transfere a reserva', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     const codeId = new ObjectId();
@@ -883,7 +902,7 @@ test('troca PIX cancelada no Asaas cria uma unica sessao de cartao e transfere a
 });
 
 test('timeout ao cancelar PIX preserva sessao, vaga e desconto', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     await Promise.all([
@@ -931,7 +950,7 @@ test('timeout ao cancelar PIX preserva sessao, vaga e desconto', async () => {
 });
 
 test('desistencia OPEN cancela atomicamente, libera vaga e desconto e e idempotente', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     const codeId = new ObjectId();
@@ -1004,7 +1023,7 @@ test('desistencia OPEN cancela atomicamente, libera vaga e desconto e e idempote
 });
 
 test('desistencia nao permite cancelar sessao de outro usuario', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     await Promise.all([
@@ -1038,7 +1057,7 @@ test('desistencia nao permite cancelar sessao de outro usuario', async () => {
 });
 
 test('desistencia PIX confirmada no Asaas libera recursos sem criar substituta', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     const codeId = new ObjectId();
@@ -1115,7 +1134,7 @@ test('desistencia PIX confirmada no Asaas libera recursos sem criar substituta',
 });
 
 test('pagamento PIX detectado impede desistencia e preserva vaga e desconto', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     await Promise.all([
@@ -1182,7 +1201,7 @@ test('pagamento PIX detectado impede desistencia e preserva vaga e desconto', as
 });
 
 test('timeout na desistencia PIX permanece RETRYABLE e pode ser conciliado depois', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     await Promise.all([
@@ -1238,7 +1257,7 @@ test('timeout na desistencia PIX permanece RETRYABLE e pode ser conciliado depoi
 });
 
 test('falha transacional local preserva sessao OPEN e seus recursos', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const purchaseId = new ObjectId();
     await db.collection('pagamentos.sessoes').insertOne({
@@ -1262,7 +1281,7 @@ test('falha transacional local preserva sessao OPEN e seus recursos', async () =
 });
 
 test('migracao index-only exige digest e preserva ledger legado e pagamento protegido', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const protectedEventId = 'evt_protected_fixture';
     const paymentId = 'pay_protected_fixture';
     const purchaseId = new ObjectId();
@@ -1302,14 +1321,14 @@ test('migracao index-only exige digest e preserva ledger legado e pagamento prot
         .findOne({ compraId: purchaseId });
     const commonArgs = [
         'scripts/migrations/setup-payment-indexes.mjs',
-        '--database', 'webhook_tests',
+        '--database', TEST_DATABASE_NAME,
         '--edition', 'CIEPS-2026',
         '--protect-event', protectedEventId,
     ];
     const environment = {
         ...process.env,
         MONGODB_URI: replicaSet.getUri(),
-        MONGODB_DB: 'webhook_tests',
+        MONGODB_DB: TEST_DATABASE_NAME,
     };
 
     const dryRun = await execFileAsync(process.execPath, commonArgs, {
@@ -1344,7 +1363,7 @@ test('migracao index-only exige digest e preserva ledger legado e pagamento prot
 });
 
 test('atividade vencida mantem participante e confirmacao tardia o reinsere', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { updateLegacyPayment } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1405,7 +1424,7 @@ test('atividade vencida mantem participante e confirmacao tardia o reinsere', as
 });
 
 test('estorno tardio de uma edicao nao sobrescreve a compra atual do usuario', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const owner = new ObjectId();
     const refundedPurchaseId = new ObjectId();
     const currentPurchaseId = new ObjectId();
@@ -1448,7 +1467,7 @@ test('lista oficial inclui todos os eventos financeiros automatizados ou revisad
 });
 
 test('snapshot de refunds soma somente DONE e refund negado encerra IN_PROGRESS em revisao', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1481,7 +1500,7 @@ test('snapshot de refunds soma somente DONE e refund negado encerra IN_PROGRESS 
 });
 
 test('chargeback ganho aguarda reversao e confirmacao posterior limpa o estado', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1516,7 +1535,7 @@ test('chargeback ganho aguarda reversao e confirmacao posterior limpa o estado',
 });
 
 test('PIX CONFIRMED permanece pendente e somente PAYMENT_RECEIVED libera acesso', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1543,7 +1562,7 @@ test('PIX CONFIRMED permanece pendente e somente PAYMENT_RECEIVED libera acesso'
 });
 
 test('parcelamento 3x aceita novos paymentIds e refund de uma parcela nao revoga inscricao', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1590,8 +1609,112 @@ test('parcelamento 3x aceita novos paymentIds e refund de uma parcela nao revoga
     assert.equal(paymentSession?.refundsSnapshot?.totalDoneCentavos, 500);
 });
 
-test('webhook antes da resposta hidrata plano provisório e confirma a parcela correta', async () => {
-    const db = client.db('webhook_tests');
+test('plano 220 em 6x aceita a ultima primeiro e rejeita valor ou sequencia adulterados', async () => {
+    const db = client.db(TEST_DATABASE_NAME);
+    const { processEvent } = await import(
+        '../../../../api/payment/webhook/payment_notification/route.js'
+    );
+    const installmentPlan = {
+        installmentId: 'ins_remainder_220',
+        count: 6,
+        totalValueCentavos: 22_000,
+        installmentValueCentavos: 3_667,
+        valueDistribution: ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
+        observedPayments: [],
+    };
+    const seeded = await seedModernPayment(db, { installmentPlan });
+    const lastFirstPayload = {
+        id: 'evt_remainder_last_first',
+        event: 'PAYMENT_CREATED',
+        payment: {
+            ...seeded.payment,
+            id: 'pay_remainder_6',
+            invoiceNumber: 'inv_remainder_6',
+            installmentNumber: 6,
+            value: 36.70,
+            status: 'PENDING',
+        },
+    };
+    const lastFirst = await runPaymentTransaction(
+        client,
+        (session) => processEvent(db, lastFirstPayload, session),
+    );
+    assert.equal(lastFirst.requiresReview, false);
+
+    const firstPayload = {
+        id: 'evt_remainder_first_confirmed',
+        event: 'PAYMENT_CONFIRMED',
+        payment: {
+            ...seeded.payment,
+            installmentNumber: 1,
+            value: 36.66,
+            status: 'CONFIRMED',
+        },
+    };
+    const first = await runPaymentTransaction(
+        client,
+        (session) => processEvent(db, firstPayload, session),
+    );
+    assert.equal(first.requiresReview, false);
+    const duplicate = await runPaymentTransaction(
+        client,
+        (session) => processEvent(db, firstPayload, session),
+    );
+    assert.equal(duplicate.requiresReview, false);
+    assert.equal(
+        (await db.collection('pagamentos.sessoes').findOne({ _id: seeded.purchaseId }))
+            ?.installmentPlan?.observedPayments?.length,
+        2,
+    );
+
+    const repeatedNumber = await runPaymentTransaction(client, (session) => processEvent(db, {
+        id: 'evt_remainder_repeated_number',
+        event: 'PAYMENT_CREATED',
+        payment: {
+            ...seeded.payment,
+            id: 'pay_remainder_duplicate_number',
+            invoiceNumber: 'inv_remainder_duplicate_number',
+            installmentNumber: 1,
+            value: 36.66,
+            status: 'PENDING',
+        },
+    }, session));
+    assert.equal(repeatedNumber.requiresReview, true);
+    assert.equal(repeatedNumber.reviewReason, 'PAYMENT_INSTALLMENT_VALIDATION_FAILED');
+
+    const altered = await seedModernPayment(db, {
+        installmentPlan: { ...installmentPlan, installmentId: 'ins_remainder_altered' },
+    });
+    const alteredResult = await runPaymentTransaction(client, (session) => processEvent(db, {
+        id: 'evt_remainder_altered_value',
+        event: 'PAYMENT_CREATED',
+        payment: {
+            ...altered.payment,
+            installmentNumber: 2,
+            value: 36.67,
+        },
+    }, session));
+    assert.equal(alteredResult.requiresReview, true);
+    assert.equal(alteredResult.reviewReason, 'PAYMENT_INSTALLMENT_VALIDATION_FAILED');
+
+    const outOfRange = await seedModernPayment(db, {
+        installmentPlan: { ...installmentPlan, installmentId: 'ins_remainder_out_of_range' },
+    });
+    const outOfRangeResult = await runPaymentTransaction(client, (session) => processEvent(db, {
+        id: 'evt_remainder_out_of_range',
+        event: 'PAYMENT_CREATED',
+        payment: {
+            ...outOfRange.payment,
+            installmentNumber: 7,
+            value: 36.66,
+        },
+    }, session));
+    assert.equal(outOfRangeResult.requiresReview, true);
+    assert.equal(outOfRangeResult.reviewReason, 'PAYMENT_INSTALLMENT_VALIDATION_FAILED');
+});
+
+test('ultima parcela chegando antes da resposta hidrata plano novo e confirma o valor correto', async () => {
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1600,9 +1723,10 @@ test('webhook antes da resposta hidrata plano provisório e confirma a parcela c
     const customer = `cus_${owner.toHexString()}`;
     const provisionalPlan = {
         installmentId: null,
-        count: 3,
-        totalValueCentavos: 1500,
-        installmentValueCentavos: 500,
+        count: 6,
+        totalValueCentavos: 22_000,
+        installmentValueCentavos: 3_667,
+        valueDistribution: ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
         observedPayments: [],
     };
     await db.collection('usuarios').insertOne({
@@ -1617,7 +1741,7 @@ test('webhook antes da resposta hidrata plano provisório e confirma a parcela c
         edicaoId: 'CIEPS-2026',
         status: 'CREATING_PAYMENT',
         metodoPagamento: 'CREDIT_CARD',
-        valorSelecionadoCentavos: { original: 1500, desconto: 0, final: 1500 },
+        valorSelecionadoCentavos: { original: 22_000, desconto: 0, final: 22_000 },
         installmentPlan: provisionalPlan,
         activeKey: `CIEPS-2026:${owner}:ticket`,
     });
@@ -1626,7 +1750,7 @@ test('webhook antes da resposta hidrata plano provisório e confirma a parcela c
         usuarioId: owner,
         edicaoId: 'CIEPS-2026',
         status: 'PAGAMENTO_PENDENTE',
-        valorSelecionadoCentavos: { original: 1500, desconto: 0, final: 1500 },
+        valorSelecionadoCentavos: { original: 22_000, desconto: 0, final: 22_000 },
         installmentPlan: provisionalPlan,
         pagamento: { metodo: 'CREDIT_CARD' },
     });
@@ -1637,10 +1761,10 @@ test('webhook antes da resposta hidrata plano provisório e confirma a parcela c
             id: 'pay_installment_before_response',
             invoiceNumber: 'inv_installment_before_response',
             installment: 'ins_before_response',
-            installmentNumber: 1,
+            installmentNumber: 6,
             customer,
             externalReference: String(purchaseId),
-            value: 5,
+            value: 36.70,
             billingType: 'CREDIT_CARD',
             status: 'CONFIRMED',
         },
@@ -1667,7 +1791,7 @@ test('webhook antes da resposta hidrata plano provisório e confirma a parcela c
 });
 
 test('webhook de outro customer nao envenena o identificador do plano provisorio', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1737,7 +1861,7 @@ test('webhook de outro customer nao envenena o identificador do plano provisorio
 });
 
 test('referencia cruzada e CHECKOUT_CREATED divergente nao alteram outra compra', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1764,7 +1888,7 @@ test('referencia cruzada e CHECKOUT_CREATED divergente nao alteram outra compra'
 });
 
 test('CHECKOUT_CREATED recupera resposta PIX perdida sem liberar acesso', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1795,7 +1919,7 @@ test('CHECKOUT_CREATED recupera resposta PIX perdida sem liberar acesso', async 
 test('worker global ignora ledgerId tardio e processa confirmacao antes do refund', async () => {
     const db = await createLedgerIndexes();
     process.env.MONGODB_URI = replicaSet.getUri();
-    process.env.MONGODB_DB = 'webhook_tests';
+    process.env.MONGODB_DB = TEST_DATABASE_NAME;
     const { processAcceptedWebhookEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1838,7 +1962,7 @@ test('worker global ignora ledgerId tardio e processa confirmacao antes do refun
 test('falha FIFO segura o evento posterior ate retry ou REVIEW_REQUIRED', async () => {
     const db = await createLedgerIndexes();
     process.env.MONGODB_URI = replicaSet.getUri();
-    process.env.MONGODB_DB = 'webhook_tests';
+    process.env.MONGODB_DB = TEST_DATABASE_NAME;
     const previousApiUrl = process.env.ASAAS_API_URL;
     const previousApiKey = process.env.ASAAS_API_KEY;
     process.env.ASAAS_API_URL = 'http://127.0.0.1:1';
@@ -1902,7 +2026,7 @@ test('falha FIFO segura o evento posterior ate retry ou REVIEW_REQUIRED', async 
 });
 
 test('eventos excepcionais nunca liberam acesso silenciosamente', async () => {
-    const db = client.db('webhook_tests');
+    const db = client.db(TEST_DATABASE_NAME);
     const { processEvent } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -1955,7 +2079,7 @@ test('eventos excepcionais nunca liberam acesso silenciosamente', async () => {
 test('worker drena backlog maior que vinte em uma unica execucao', async () => {
     const db = await createLedgerIndexes();
     process.env.MONGODB_URI = replicaSet.getUri();
-    process.env.MONGODB_DB = 'webhook_tests';
+    process.env.MONGODB_DB = TEST_DATABASE_NAME;
     const { drainPendingWebhookEvents } = await import(
         '../../../../api/payment/webhook/payment_notification/route.js'
     );
@@ -2105,6 +2229,90 @@ test('reconciliacao consulta todo parcelamento e refund de uma parcela nao revog
         assert.equal(paymentSession?.installmentPlan?.observedPayments.length, 3);
         assert.equal(paymentSession?.installmentPlan?.refundTotalDoneCentavos, 500);
         assert.equal(paymentSession?.reconciliationLeaseUntil, undefined);
+    } finally {
+        globalThis.fetch = previous.fetch;
+        if (previous.apiUrl === undefined) delete process.env.ASAAS_API_URL;
+        else process.env.ASAAS_API_URL = previous.apiUrl;
+        if (previous.apiKey === undefined) delete process.env.ASAAS_API_KEY;
+        else process.env.ASAAS_API_KEY = previous.apiKey;
+        if (previous.secret === undefined) delete process.env.PAYMENT_RECONCILIATION_SECRET;
+        else process.env.PAYMENT_RECONCILIATION_SECRET = previous.secret;
+    }
+});
+
+test('reconciliacao aceita plano novo completo e incompleto com a distribuicao exata', async () => {
+    const db = await createLedgerIndexes();
+    const basePlan = {
+        count: 6,
+        totalValueCentavos: 22_000,
+        installmentValueCentavos: 3_666,
+        valueDistribution: ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
+        observedPayments: [],
+    };
+    const complete = await seedModernPayment(db, {
+        status: 'CONFIRMED',
+        installmentPlan: { ...basePlan, installmentId: 'inst_remainder_complete' },
+    });
+    const incomplete = await seedModernPayment(db, {
+        status: 'CONFIRMED',
+        installmentPlan: { ...basePlan, installmentId: 'inst_remainder_incomplete' },
+    });
+    await db.collection('pagamentos.sessoes').updateMany(
+        { _id: { $in: [complete.purchaseId, incomplete.purchaseId] } },
+        { $set: { updatedAt: new Date('2026-08-07T10:00:00Z') } },
+    );
+    const providerPayments = (seeded, count) => Array.from({ length: count }, (_, index) => {
+        const installmentNumber = index + 1;
+        return {
+            ...seeded.payment,
+            id: `${seeded.payment.id}_${installmentNumber}`,
+            invoiceNumber: `${seeded.payment.invoiceNumber}_${installmentNumber}`,
+            installmentNumber,
+            value: installmentNumber === 6 ? 36.70 : 36.66,
+            status: 'CONFIRMED',
+        };
+    });
+    const previous = {
+        apiUrl: process.env.ASAAS_API_URL,
+        apiKey: process.env.ASAAS_API_KEY,
+        secret: process.env.PAYMENT_RECONCILIATION_SECRET,
+        fetch: globalThis.fetch,
+    };
+    process.env.ASAAS_API_URL = 'https://api-sandbox.asaas.com/v3';
+    process.env.ASAAS_API_KEY = 'fixture-key';
+    process.env.PAYMENT_RECONCILIATION_SECRET = 'fixture-root-secret-with-more-than-32-bytes';
+    globalThis.fetch = (async (input) => {
+        const url = String(input);
+        if (url.includes('installment=inst_remainder_complete')) {
+            return Response.json({ data: providerPayments(complete, 6), hasMore: false });
+        }
+        if (url.includes('installment=inst_remainder_incomplete')) {
+            return Response.json({ data: providerPayments(incomplete, 5), hasMore: false });
+        }
+        return Response.json({ data: [], hasMore: false });
+    }) as typeof fetch;
+    try {
+        const [{ derivePaymentCredential }, { POST }] = await Promise.all([
+            import('../../webhook-auth.ts'),
+            import('../../../../api/payment/reconciliation/route.ts'),
+        ]);
+        const token = derivePaymentCredential('reconciliation');
+        assert.ok(token);
+        const response = await POST(new Request('http://localhost/api/payment/reconciliation', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${token}` },
+        }));
+        assert.equal(response.status, 200);
+        const [completeSession, incompleteSession] = await Promise.all([
+            db.collection('pagamentos.sessoes').findOne({ _id: complete.purchaseId }),
+            db.collection('pagamentos.sessoes').findOne({ _id: incomplete.purchaseId }),
+        ]);
+        assert.equal(completeSession?.status, 'CONFIRMED');
+        assert.notEqual(completeSession?.gatewayState, 'PAYMENT_REVIEW_REQUIRED');
+        assert.equal(completeSession?.installmentPlan?.observedPayments?.length, 6);
+        assert.equal(incompleteSession?.status, 'CONFIRMED');
+        assert.notEqual(incompleteSession?.gatewayState, 'PAYMENT_REVIEW_REQUIRED');
+        assert.equal(incompleteSession?.installmentPlan?.observedPayments?.length, 5);
     } finally {
         globalThis.fetch = previous.fetch;
         if (previous.apiUrl === undefined) delete process.env.ASAAS_API_URL;

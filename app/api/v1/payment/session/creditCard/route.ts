@@ -17,6 +17,12 @@ import { normalizeCardHolderInput } from '@/lib/payments/customer-sync';
 import { getPaymentRemoteIp } from '@/lib/payments/remote-ip';
 import { isRemoteWorkSession } from '@/lib/remote-work-access';
 import { markProductPaymentPending } from '@/lib/payments/product-effects';
+import {
+    ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
+    expectedInstallmentValueCents,
+    paymentValueInCents,
+    resolveSelectedCreditCardAmounts,
+} from '@/lib/payments/installments';
 
 function formatDate(date: Date): string {
     const year = date.getFullYear();
@@ -233,38 +239,32 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
         const [expiryMonth, shortExpiryYear] = String(data.cardInfo.expiry).split('/');
         const expiryYear =
             shortExpiryYear?.length === 2 ? `20${shortExpiryYear}` : shortExpiryYear;
-        const installmentCount = Number(selectedInstallment.totalParcelas);
-        const originalInstallment = existingSession.paymentConfigOriginal?.precos?.parcelamentos?.find(
-            (installment) => Number(installment.codigo) === Number(data.idPagamento),
-        );
-        const snapshotFinalCents = Number(existingSession.valoresCentavos?.final?.CREDIT_CARD);
-        const calculatedFinalCents =
-            Math.round(Number(selectedInstallment.valorCadaParcela) * 100) * installmentCount;
-        const finalCents = Number.isInteger(snapshotFinalCents) && snapshotFinalCents >= 0
-            ? snapshotFinalCents
-            : calculatedFinalCents;
+        const selectedAmounts = resolveSelectedCreditCardAmounts(existingSession, data.idPagamento);
+        if (!selectedAmounts) {
+            await db.collection('pagamentos.sessoes').updateOne(
+                { _id: sessionId, status: 'CREATING_PAYMENT' },
+                { $set: { status: 'OPEN', metodoPagamento: null, updatedAt: new Date() } },
+            );
+            return NextResponse.json(
+                { error: 'invalid_installment_pricing', message: 'Parcelamento inválido.' },
+                { status: 422 },
+            );
+        }
+        const {
+            installmentCount,
+            finalCents,
+            regularInstallmentCents,
+            selectedValueSnapshot,
+        } = selectedAmounts;
         const totalValue = finalCents / 100;
-        const installmentValueCentavos = Math.round(finalCents / installmentCount);
-        const snapshotOriginalCents = Number(
-            existingSession.valoresCentavos?.original?.CREDIT_CARD,
-        );
-        const originalCents = Number.isInteger(snapshotOriginalCents) && snapshotOriginalCents >= 0
-            ? snapshotOriginalCents
-            : originalInstallment
-                ? Math.round(Number(originalInstallment.valorCadaParcela) * 100) *
-                    Number(originalInstallment.totalParcelas)
-                : finalCents;
-        const selectedValueSnapshot = {
-            original: originalCents,
-            desconto: Math.max(0, originalCents - finalCents),
-            final: finalCents,
-        };
+        const installmentValueCentavos = regularInstallmentCents;
         const provisionalInstallmentPlan = installmentCount > 1
             ? {
                 installmentId: null,
                 count: installmentCount,
                 totalValueCentavos: finalCents,
                 installmentValueCentavos,
+                valueDistribution: ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
                 observedPayments: [],
             }
             : null;
@@ -408,7 +408,18 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
             );
         }
 
-        if (!responseBody?.id || (installmentCount > 1 && !responseBody?.installment)) {
+        const responseInstallmentNumber = Number(responseBody?.installmentNumber);
+        const responseValueCentavos = paymentValueInCents(responseBody?.value);
+        const expectedResponseValueCentavos = installmentCount > 1
+            ? expectedInstallmentValueCents(provisionalInstallmentPlan, responseInstallmentNumber)
+            : finalCents;
+        if (
+            !responseBody?.id ||
+            (installmentCount > 1 && !responseBody?.installment) ||
+            responseValueCentavos === null ||
+            expectedResponseValueCentavos === null ||
+            responseValueCentavos !== expectedResponseValueCentavos
+        ) {
             await db.collection('pagamentos.sessoes').updateOne(
                 { _id: sessionId, status: 'CREATING_PAYMENT' },
                 {
@@ -430,15 +441,16 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
                 count: installmentCount,
                 totalValueCentavos: finalCents,
                 installmentValueCentavos,
+                valueDistribution: ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
                 observedPayments: [{
                     paymentId: String(responseBody.id),
                     invoiceNumber: responseBody.invoiceNumber
                         ? String(responseBody.invoiceNumber)
                         : null,
-                    installmentNumber: Number(responseBody.installmentNumber || 1),
+                    installmentNumber: responseInstallmentNumber,
                     status: String(responseBody.status || 'PENDING'),
-                    value: installmentValueCentavos / 100,
-                    valueCentavos: installmentValueCentavos,
+                    value: responseValueCentavos / 100,
+                    valueCentavos: responseValueCentavos,
                     lastEvent: 'PAYMENT_CREATED',
                     lastEventId: null,
                     observedAt: new Date(),

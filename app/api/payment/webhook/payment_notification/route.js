@@ -20,6 +20,10 @@ import { findLegacyPaymentContext } from '../../../../lib/payments/webhook-legac
 import { asaasRequestHeaders } from '../../../../lib/payments/asaas.ts';
 import { completePixToCardSwitch } from '../../../../lib/payments/pix-switch.ts';
 import {
+  ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
+  expectedInstallmentValueCents,
+} from '../../../../lib/payments/installments.ts';
+import {
   acquireWebhookWorkerLease,
   claimWebhookEvent,
   ensureWebhookLedgerReady,
@@ -257,13 +261,13 @@ async function hydrateProvisionalInstallmentPlan(db, session, payload, mongoSess
 
   const installmentId = String(payment.installment || '').trim();
   const externalReference = String(payment.externalReference || '').trim();
-  const expectedCents = Number(plan.installmentValueCentavos);
+  const expectedCents = expectedInstallmentValueCents(plan, payment.installmentNumber);
   const receivedCents = paymentValueInCents(payment.value);
   if (
     !installmentId ||
     externalReference !== String(session._id) ||
     Number(plan.count) < 2 ||
-    !Number.isInteger(expectedCents) ||
+    expectedCents === null ||
     receivedCents !== expectedCents ||
     String(payment.billingType || '').toUpperCase() !== 'CREDIT_CARD'
   ) {
@@ -303,7 +307,10 @@ async function hydrateProvisionalInstallmentPlan(db, session, payload, mongoSess
         _id: session._id,
         'installmentPlan.count': Number(plan.count),
         'installmentPlan.totalValueCentavos': Number(plan.totalValueCentavos),
-        'installmentPlan.installmentValueCentavos': expectedCents,
+        'installmentPlan.installmentValueCentavos': Number(plan.installmentValueCentavos),
+        ...(plan.valueDistribution
+          ? { 'installmentPlan.valueDistribution': String(plan.valueDistribution) }
+          : {}),
         $or: [
           { 'installmentPlan.installmentId': null },
           { 'installmentPlan.installmentId': '' },
@@ -319,7 +326,10 @@ async function hydrateProvisionalInstallmentPlan(db, session, payload, mongoSess
         usuarioId: session.owner,
         'installmentPlan.count': Number(plan.count),
         'installmentPlan.totalValueCentavos': Number(plan.totalValueCentavos),
-        'installmentPlan.installmentValueCentavos': expectedCents,
+        'installmentPlan.installmentValueCentavos': Number(plan.installmentValueCentavos),
+        ...(plan.valueDistribution
+          ? { 'installmentPlan.valueDistribution': String(plan.valueDistribution) }
+          : {}),
       },
       { $set: assignmentFields },
       { session: mongoSession },
@@ -352,6 +362,21 @@ function installmentPaymentObservation(payload, observedAt = new Date()) {
     lastEventId: getEventId(payload),
     observedAt,
   };
+}
+
+function markedInstallmentSequenceMatches(session, payment) {
+  const plan = session?.installmentPlan;
+  if (plan?.valueDistribution !== ASAAS_LAST_INSTALLMENT_REMAINDER_V1) return true;
+  const paymentId = String(payment?.id || '');
+  const installmentNumber = Number(payment?.installmentNumber);
+  if (!paymentId || expectedInstallmentValueCents(plan, installmentNumber) === null) return false;
+  const previous = Array.isArray(plan.observedPayments) ? plan.observedPayments : [];
+  return !previous.some((item) => {
+    const previousPaymentId = String(item?.paymentId || '');
+    const previousInstallmentNumber = Number(item?.installmentNumber);
+    return (previousPaymentId === paymentId && previousInstallmentNumber !== installmentNumber) ||
+      (previousPaymentId !== paymentId && previousInstallmentNumber === installmentNumber);
+  });
 }
 
 async function recordInstallmentPayment(db, session, payload, mongoSession) {
@@ -666,15 +691,16 @@ async function validateSessionPayment(db, session, payload, mongoSession) {
     reasons.push('CHECKOUT_EXTERNAL_REFERENCE_MISMATCH');
   }
 
-  const expectedCents = Number(
-    session.installmentPlan?.installmentValueCentavos ??
-    assignment?.installmentPlan?.installmentValueCentavos ??
-    session.valorSelecionadoCentavos?.final ??
-    assignment?.valorSelecionadoCentavos?.final ??
-    assignment?.valoresCentavos?.final?.[session.metodoPagamento],
-  );
+  const installmentPlan = session.installmentPlan ?? assignment?.installmentPlan;
+  const expectedCents = installmentPlan
+    ? expectedInstallmentValueCents(installmentPlan, payment.installmentNumber)
+    : Number(
+        session.valorSelecionadoCentavos?.final ??
+        assignment?.valorSelecionadoCentavos?.final ??
+        assignment?.valoresCentavos?.final?.[session.metodoPagamento],
+      );
   const receivedCents = paymentValueInCents(payment.value);
-  if (!Number.isInteger(expectedCents) || receivedCents === null || expectedCents !== receivedCents) {
+  if (expectedCents === null || !Number.isInteger(expectedCents) || receivedCents === null || expectedCents !== receivedCents) {
     reasons.push('PAYMENT_VALUE_MISMATCH');
   }
 
@@ -1506,6 +1532,22 @@ export async function processEvent(db, payload, mongoSession) {
         reviewReason,
       };
     }
+    if (
+      session.installmentPlan?.valueDistribution === ASAAS_LAST_INSTALLMENT_REMAINDER_V1 &&
+      (
+        !markedInstallmentSequenceMatches(session, payload?.payment) ||
+        !(await validateSessionPayment(db, session, payload, mongoSession))
+      )
+    ) {
+      reviewReason = 'PAYMENT_INSTALLMENT_VALIDATION_FAILED';
+      await markFinancialEventForReview(db, session, event, reviewReason, mongoSession);
+      return {
+        sessionId: session._id,
+        edicaoId: session.edicaoId,
+        requiresReview: true,
+        reviewReason,
+      };
+    }
     await recordInstallmentPayment(db, session, payload, mongoSession);
     if (isPixAwaitingReceiptEvent(event, payload.payment)) {
       const now = new Date();
@@ -1855,8 +1897,6 @@ export async function handleAsaasWebhookRequest(
       { status: 503 },
     );
   }
-  console.log("Token do Webhook:", derivePaymentCredential('webhook', { apiUrl: process.env.ASAAS_API_URL }))
-  console.log("Token do Webhook RECEBIDO:", receivedToken)
   if (!secureEquals(receivedToken, expectedToken)) {
     return Response.json(
       { error: 'invalid_webhook_token', message: 'Token inválido.' },
