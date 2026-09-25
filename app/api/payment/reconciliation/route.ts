@@ -22,6 +22,11 @@ import {
     markProductPaymentPending,
     releaseRemoteWorkAccessPayment,
 } from '../../../lib/payments/product-effects.ts';
+import {
+    ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
+    expectedInstallmentValueCents,
+    paymentValueInCents,
+} from '../../../lib/payments/installments.ts';
 
 export const maxDuration = 110;
 
@@ -463,16 +468,44 @@ export async function POST(request: Request) {
                 continue;
             }
             const expectedId = String(lease.installmentPlan.installmentId);
-            const expectedValue = Number(lease.installmentPlan.installmentValueCentavos);
             const expectedCount = Number(lease.installmentPlan.count);
             const installmentNumbers = lookup.records.map((record) => Number(record.installmentNumber));
-            const invalidPlan = lookup.records.length > expectedCount ||
-                new Set(installmentNumbers.filter(Number.isInteger)).size !==
-                    installmentNumbers.filter(Number.isInteger).length ||
-                lookup.records.some((record) =>
-                    String(record.installment || '') !== expectedId ||
-                    Math.round(Number(record.value) * 100) !== expectedValue,
+            const isRemainderPlan = lease.installmentPlan.valueDistribution ===
+                ASAAS_LAST_INSTALLMENT_REMAINDER_V1;
+            const uniqueInstallmentNumbers = new Set(installmentNumbers);
+            const remainderInvalidSequence = installmentNumbers.some((number) =>
+                !Number.isInteger(number) || number < 1 || number > expectedCount,
+            ) || uniqueInstallmentNumbers.size !== installmentNumbers.length;
+            const legacyIntegerNumbers = installmentNumbers.filter(Number.isInteger);
+            const legacyInvalidSequence = new Set(legacyIntegerNumbers).size !==
+                legacyIntegerNumbers.length;
+            const invalidRecords = lookup.records.some((record) => {
+                const receivedValue = paymentValueInCents(record.value);
+                const expectedValue = expectedInstallmentValueCents(
+                    lease.installmentPlan,
+                    record.installmentNumber,
                 );
+                return String(record.installment || '') !== expectedId ||
+                    receivedValue === null ||
+                    expectedValue === null ||
+                    receivedValue !== expectedValue;
+            });
+            const completeRemainderPlan = isRemainderPlan && lookup.records.length === expectedCount;
+            const completeSequence = completeRemainderPlan &&
+                Array.from({ length: expectedCount }, (_, index) => index + 1)
+                    .every((number) => uniqueInstallmentNumbers.has(number));
+            const receivedTotal = lookup.records.reduce(
+                (total, record) => total + (paymentValueInCents(record.value) ?? 0),
+                0,
+            );
+            const invalidCompleteTotal = completeRemainderPlan && (
+                !completeSequence ||
+                receivedTotal !== Number(lease.installmentPlan.totalValueCentavos)
+            );
+            const invalidPlan = lookup.records.length > expectedCount ||
+                (isRemainderPlan ? remainderInvalidSequence : legacyInvalidSequence) ||
+                invalidRecords ||
+                invalidCompleteTotal;
             if (invalidPlan) {
                 const reviewAt = new Date();
                 await Promise.all([

@@ -20,6 +20,12 @@ import {
   preparePaymentCustomer,
 } from '@/lib/payments/customer-sync';
 import { getPaymentRemoteIp } from '@/lib/payments/remote-ip';
+import {
+  ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
+  expectedInstallmentValueCents,
+  paymentValueInCents,
+  resolveSelectedCreditCardAmounts,
+} from '@/lib/payments/installments';
 
 function historyEntry(payment, userId, description) {
   return {
@@ -207,29 +213,25 @@ export const POST = withApiAuthRequired(async function POST(request) {
 
     const [expiryMonth, shortExpiryYear] = String(data.cardInfo.expiry).split('/');
     const expiryYear = shortExpiryYear?.length === 2 ? `20${shortExpiryYear}` : shortExpiryYear;
-    const installmentCount = Number(installment.totalParcelas);
-    const snapshotFinalCents = Number(purchase.valoresCentavos?.final?.CREDIT_CARD);
-    const finalCents = Number.isInteger(snapshotFinalCents) && snapshotFinalCents >= 0
-      ? snapshotFinalCents
-      : Math.round(Number(installment.valorCadaParcela) * 100) * installmentCount;
+    const selectedAmounts = resolveSelectedCreditCardAmounts(purchase, data.idPagamento);
+    if (!selectedAmounts) {
+      throw new Error('Parcelamento inválido.');
+    }
+    const {
+      installmentCount,
+      finalCents,
+      regularInstallmentCents,
+      selectedValueSnapshot,
+    } = selectedAmounts;
     const totalValue = finalCents / 100;
-    const snapshotOriginalCents = Number(purchase.valoresCentavos?.original?.CREDIT_CARD);
-    const originalCents = Number.isInteger(snapshotOriginalCents) && snapshotOriginalCents >= 0
-      ? snapshotOriginalCents
-      : Math.round(Number(configuredInstallment.valorCadaParcela) * 100) *
-        Number(configuredInstallment.totalParcelas);
-    const installmentValueCentavos = Math.round(finalCents / installmentCount);
-    const selectedValueSnapshot = {
-      original: originalCents,
-      desconto: Math.max(0, originalCents - finalCents),
-      final: finalCents,
-    };
+    const installmentValueCentavos = regularInstallmentCents;
     const provisionalInstallmentPlan = installmentCount > 1
       ? {
           installmentId: null,
           count: installmentCount,
           totalValueCentavos: finalCents,
           installmentValueCentavos,
+          valueDistribution: ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
           observedPayments: [],
         }
       : null;
@@ -359,7 +361,18 @@ export const POST = withApiAuthRequired(async function POST(request) {
       );
     }
 
-    if (!responseBody?.id || (installmentCount > 1 && !responseBody?.installment)) {
+    const responseInstallmentNumber = Number(responseBody?.installmentNumber);
+    const responseValueCentavos = paymentValueInCents(responseBody?.value);
+    const expectedResponseValueCentavos = installmentCount > 1
+      ? expectedInstallmentValueCents(provisionalInstallmentPlan, responseInstallmentNumber)
+      : finalCents;
+    if (
+      !responseBody?.id ||
+      (installmentCount > 1 && !responseBody?.installment) ||
+      responseValueCentavos === null ||
+      expectedResponseValueCentavos === null ||
+      responseValueCentavos !== expectedResponseValueCentavos
+    ) {
       await db.collection('pagamentos.sessoes').updateOne(
         { _id: purchase._id, status: 'CREATING_PAYMENT' },
         { $set: { gatewayState: 'RECONCILIATION_REQUIRED', updatedAt: new Date() } },
@@ -376,13 +389,14 @@ export const POST = withApiAuthRequired(async function POST(request) {
           count: installmentCount,
           totalValueCentavos: finalCents,
           installmentValueCentavos,
+          valueDistribution: ASAAS_LAST_INSTALLMENT_REMAINDER_V1,
           observedPayments: [{
             paymentId: String(responseBody.id),
             invoiceNumber: responseBody.invoiceNumber ? String(responseBody.invoiceNumber) : null,
-            installmentNumber: Number(responseBody.installmentNumber || 1),
+            installmentNumber: responseInstallmentNumber,
             status: String(responseBody.status || 'PENDING'),
-            value: installmentValueCentavos / 100,
-            valueCentavos: installmentValueCentavos,
+            value: responseValueCentavos / 100,
+            valueCentavos: responseValueCentavos,
             lastEvent: 'PAYMENT_CREATED',
             lastEventId: null,
             observedAt: new Date(),
