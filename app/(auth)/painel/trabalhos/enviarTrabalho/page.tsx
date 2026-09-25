@@ -213,6 +213,9 @@ function SubmissionForm() {
         ? { ...arquivo, progress, status, error }
         : arquivo
     ));
+    setSlotFiles(prev => prev.map(slot =>
+      slot?.id === fileId ? { ...slot, progress, status, error } : slot
+    ));
   };
 
   const uploadSingleFile = async (file: File, fileName: string, fileId: string): Promise<string | null> => {
@@ -230,7 +233,7 @@ function SubmissionForm() {
       if (!result) throw new Error('A API de upload retornou uma resposta vazia.');
       if (!result.data || !result.data._id) throw new Error('A API de upload não retornou um ID de arquivo válido.');
 
-      updateFileProgress(fileId, 100, 'completed');
+      updateFileProgress(fileId, 95, 'uploading');
       return result.data._id;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido.';
@@ -273,7 +276,7 @@ function SubmissionForm() {
       if (!result) throw new Error('A API de reconstrução retornou uma resposta vazia.');
       if (!result.data || !result.data._id) throw new Error('A API de reconstrução não retornou um ID válido.');
 
-      updateFileProgress(fileId, 100, 'completed');
+      updateFileProgress(fileId, 95, 'uploading');
       return result.data._id;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido.';
@@ -356,16 +359,10 @@ function SubmissionForm() {
     const uploadFunction = file.size > modalidade.chunk_limite ? uploadChunkedFile : uploadSingleFile;
     const uploadedFileId = await uploadFunction(file, file.name, fileId);
 
-    if (!uploadedFileId) {
-      setSlotFiles(prev => {
-        const next = [...prev];
-        next[slotIndex] = { ...(next[slotIndex] as ArquivoUpload), status: 'error' };
-        return next;
-      });
-      return;
-    }
+    if (!uploadedFileId) return;
 
     setSlotFiles(prev => {
+      if (prev[slotIndex]?.id !== fileId) return prev;
       const next = [...prev];
       next[slotIndex] = {
         ...(next[slotIndex] as ArquivoUpload),
@@ -853,6 +850,8 @@ function SubmissionForm() {
                 const selectedModalidade = trabalhosProps?.modalidades?.find(m => m._id.toString() === e.target.value);
                 setModalidade(selectedModalidade);
                 setSlotRequisitos(selectedModalidade?.requisitos_arquivos ?? []);
+                setSlotFiles(Array.from({ length: selectedModalidade?.requisitos_arquivos?.length ?? 0 }, () => null));
+                setArquivos([]);
               }}
               className="form-select"
             >
@@ -873,7 +872,7 @@ function SubmissionForm() {
             <div className="flex items-baseline justify-between gap-4">
               <div>
                 <div className="form-label">Arquivos do Trabalho *</div>
-                <div className="text-xs text-gray-600 mt-1">Um arquivo por requisito. Aceitamos somente documentos Word (DOCX).</div>
+                <div className="text-xs text-gray-600 mt-1">Um arquivo por requisito. Documentos devem estar em DOCX; confira os formatos de cada requisito.</div>
               </div>
             </div>
 
@@ -884,7 +883,6 @@ function SubmissionForm() {
                 const formatos = normalizeAcademicWorkFormats(req.formatos);
                 const accept = formatos.flatMap(f => FORMAT_MIME[f] ? [f, FORMAT_MIME[f]] : [f]).join(',');
                 const labels = formatLabels(formatos);
-                const limiteMb = modalidade ? Math.round(modalidade.limite_maximo_de_postagem / 1024 / 1024) : null;
 
                 const selectFile = (f?: File | null) => {
                   if (!f) return;
@@ -921,7 +919,7 @@ function SubmissionForm() {
                           {labels.map(label => (
                             <span key={label} className="upload-format-chip">{label}</span>
                           ))}
-                          {limiteMb ? <span className="upload-format-limit">até {limiteMb} MB</span> : null}
+                          {modalidade ? <span className="upload-format-limit">até {formatFileSize(modalidade.limite_maximo_de_postagem)}</span> : null}
                         </span>
                       </label>
                     ) : (

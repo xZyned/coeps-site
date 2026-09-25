@@ -663,7 +663,7 @@
   }
 }
 
-/* Upload por requisito (PDF / DOCX) */
+/* Upload por requisito */
 .upload-slot {
   display: flex;
   flex-direction: column;
