@@ -40,7 +40,7 @@ export const DELETE: any = withApiAuthRequired(async function DELETE(request) {
     try {
         const { db } = await connectToDatabase();
         const file = await db.collection('trabalhos_blob').findOneAndDelete({
-            _id: new ObjectId(body.fileId), userId, purpose: 'submission',
+            _id: new ObjectId(body.fileId), userId, purpose: { $in: ['submission', 'correction'] },
             submissionId: { $exists: false },
         });
         if (!file) return NextResponse.json({ success: true });

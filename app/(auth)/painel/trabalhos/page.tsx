@@ -26,6 +26,7 @@ import './style.css';
 import HtmlSanitizer from '@/app/utils/htmlSanitizer';
 import { AsyncStatePanel, Button, Modal, PageShell, StatusBanner } from '@/components/cieps';
 import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
+import { workComments, workDate } from '@/lib/academic-work-correction';
 
 function formatSubmissionDate(value: string) {
     const date = new Date(value)
@@ -284,7 +285,8 @@ const TrabalhoPostado: React.FC<{
         );
 
     const [expandirTopicos, setExpandirTopicos] = useState<boolean>(false)
-    const [expandirComentariosBanca, setExpandirComentariosBanca] = useState<boolean>(false)
+    const [expandirComentariosBanca, setExpandirComentariosBanca] = useState<boolean>(status === 'Necessita de Alteração')
+    const comentarios = workComments(avaliadorComentarios);
 
     // Função para excluir trabalho
     const handleDeleteWork = async () => {
@@ -413,11 +415,7 @@ const TrabalhoPostado: React.FC<{
                                 <div className="arquivo-info text-black">
                                     <span>Postado em:</span>
                                     <p className="arquivo-data">
-                                        {new Date(arquivo?.uploadDate).toLocaleDateString('pt-BR', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric',
-                                        })} às {new Date(arquivo?.uploadDate).toLocaleTimeString('pt-BR')}
+                                        {workDate(arquivo?.uploadDate)}
                                     </p>
                                 </div>
                             </div>
@@ -440,7 +438,7 @@ const TrabalhoPostado: React.FC<{
                         <h3 className="topicos-title">
                             <Tag className="h-5 w-5" /> Tópicos
                         </h3>
-                        <button className='btn-toggle' onClick={() => setExpandirTopicos((prev) => !prev)}>{expandirTopicos ? `Expandir` : `Recolher`}</button>
+                        <button className='btn-toggle' onClick={() => setExpandirTopicos((prev) => !prev)}>{expandirTopicos ? `Recolher` : `Expandir`}</button>
                     </div>
                     <div className="topicos-content">
                         {
@@ -461,24 +459,24 @@ const TrabalhoPostado: React.FC<{
                     <h3 className="comentarios-title">
                         <MessageSquare className="h-5 w-5" /> Comentários da Banca
                     </h3>
-                    <button className='btn-toggle' onClick={() => setExpandirComentariosBanca((prev) => !prev)}>{expandirComentariosBanca ? `Expandir` : `Recolher`}</button>
+                    <button className='btn-toggle' onClick={() => setExpandirComentariosBanca((prev) => !prev)}>{expandirComentariosBanca ? `Recolher` : `Expandir`}</button>
                 </div>
                 {
                     expandirComentariosBanca &&
                     <div>
-                        {propsTrabalho.avaliadorComentarios.length === 0 ? (
+                        {comentarios.length === 0 ? (
                             <p className="text-gray-500 text-sm">Nenhuma avaliação foi feita ainda.</p>
                         ) : (
                             <div className='space-y-5'>
                                 <p className='w-full text-center text-gray-500'>Avaliações já realizadas</p>
                                 {
-                                    propsTrabalho.avaliadorComentarios.map((comentario, index) => (
+                                    [...comentarios].reverse().map((comentario, index) => (
                                         <div
                                             key={index}
                                             className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-md"
                                         >
                                             <div>
-                                                {index === propsTrabalho.avaliadorComentarios.length - 1 &&
+                                                {index === 0 &&
                                                     <span className="bg-goles/10 text-goles text-xs font-semibold px-3 py-1 rounded-full mb-2 inline-block animate-pulse">
                                                         ÚLTIMA AVALIAÇÃO
                                                     </span>
@@ -487,11 +485,7 @@ const TrabalhoPostado: React.FC<{
                                             <div className="flex flex-wrap items-center justify-between pb-10 text-sm text-gray-500 gap-x-4 gap-y-2">
                                                 <p>
                                                     <span className="font-medium text-gray-700">Data:</span>{' '}
-                                                    {new Date(comentario.date).toLocaleDateString('pt-BR', {
-                                                        year: 'numeric',
-                                                        month: 'long',
-                                                        day: 'numeric',
-                                                    })} às {new Date(comentario.date).toLocaleTimeString('pt-BR')}
+                                                    {workDate(comentario.date)}
                                                 </p>
                                                 <span
                                                     className={`

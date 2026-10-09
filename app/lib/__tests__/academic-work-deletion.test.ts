@@ -6,6 +6,7 @@ import { ObjectId, type Document } from 'mongodb';
 import ts from 'typescript';
 import { workSubmissionIsOpen } from '../academic-work-files.ts';
 import { runPaymentTransaction } from '../payments/transactions.ts';
+import * as correction from '../academic-work-correction.ts';
 
 const ownerId = '507f1f77bcf86cd799439011';
 const otherOwnerId = '507f1f77bcf86cd799439012';
@@ -38,6 +39,9 @@ function deletionHarness(options: {
 } = {}) {
     const works = options.works ?? [{ _id: new ObjectId(workId), userId: new ObjectId(ownerId), titulo: 'Trabalho teste', status: 'Necessita de Alteração', arquivos: [] }];
     const files = options.files ?? [];
+    for (const work of works) work.configuracaoModalidade ??= {
+        requisitos_arquivos: [{ titulo: 'Arquivo', formatos: ['.pdf'] }], limite_maximo_de_postagem: 1024,
+    };
     const jobs: Document[] = [];
     const collections: string[] = [];
     const removedUrls: string[] = [];
@@ -46,6 +50,8 @@ function deletionHarness(options: {
     let fileDeletes = 0;
     let blobCalls = 0;
     let inTransaction = false;
+    let correctionFilesBeforeLink: Document[] = [];
+    let committedDuringCorrection: Document[][] | undefined;
     const checkSession = (queryOptions?: Document) => assert.equal(Boolean(queryOptions?.session), inTransaction);
     const clone = (documents: Document[]) => documents.map(doc => ({ ...doc,
         ...(doc.arquivos ? { arquivos: doc.arquivos.map(file => file && ({ ...file })) } : {}),
@@ -56,6 +62,8 @@ function deletionHarness(options: {
     const matchesFile = (document: Document, filter: Document) => {
         assert.equal(typeof filter.userId, 'string');
         assert.ok(filter._id.$in.every((id: unknown) => id instanceof ObjectId));
+        if (!filter.$or) return document.userId === filter.userId && document.purpose === filter.purpose
+            && document.submissionId === undefined && filter._id.$in.some((id: ObjectId) => document._id.equals(id));
         assert.equal(filter.$or[0].submissionId.toHexString(), workId);
         assert.equal(filter.$or[1].submissionId.$exists, false);
         return document.userId === filter.userId &&
@@ -76,8 +84,17 @@ function deletionHarness(options: {
                     checkSession(queryOptions);
                     return { toArray: async () => clone(works.filter(work => work.userId.equals(filter.userId))) };
                 },
-                async updateOne(filter: Document, update: Document) {
-                    if (options.deleteBeforeCorrectionWrite) await request();
+                async updateOne(filter: Document, update: Document, queryOptions?: Document) {
+                    checkSession(queryOptions);
+                    if (options.deleteBeforeCorrectionWrite) {
+                        // A concurrent committed delete cannot observe or roll back
+                        // this correction's uncommitted attachment linkage.
+                        files.splice(0, files.length, ...clone(correctionFilesBeforeLink));
+                        inTransaction = false;
+                        await request();
+                        inTransaction = true;
+                        committedDuringCorrection = [clone(works), clone(files), clone(jobs)];
+                    }
                     const work = works.find(work => matchesOwner(work, filter) && work.status === filter.status);
                     if (!work) return { matchedCount: 0 };
                     Object.assign(work, update.$set);
@@ -97,6 +114,15 @@ function deletionHarness(options: {
                 async findOne(_filter: Document, queryOptions?: Document) { checkSession(queryOptions); return options.config === undefined ? openConfig : options.config; },
             };
             if (name === 'trabalhos_blob') return {
+                async updateMany(filter: Document, update: Document, queryOptions?: Document) {
+                    checkSession(queryOptions);
+                    correctionFilesBeforeLink = clone(files);
+                    let modifiedCount = 0;
+                    for (const file of files) if (matchesFile(file, filter)) {
+                        Object.assign(file, update.$set); modifiedCount++;
+                    }
+                    return { modifiedCount };
+                },
                 find(filter: Document, queryOptions?: Document) {
                     checkSession(queryOptions);
                     return { toArray: async () => files.filter(file => matchesFile(file, filter)) };
@@ -138,7 +164,7 @@ function deletionHarness(options: {
     const client = { startSession: () => ({
         async withTransaction(operation: () => Promise<void>) {
             const snapshot = [clone(works), clone(files), clone(jobs)];
-            const restore = () => [works, files, jobs].forEach((docs, index) => docs.splice(0, docs.length, ...clone(snapshot[index])));
+            const restore = () => [works, files, jobs].forEach((docs, index) => docs.splice(0, docs.length, ...clone((committedDuringCorrection ?? snapshot)[index])));
             inTransaction = true;
             try {
                 await operation();
@@ -172,6 +198,7 @@ function deletionHarness(options: {
         '@/app/lib/mongodb': { connectToDatabase: async () => ({ db, client }) },
         '../../../lib/mongodb': { connectToDatabase: async () => ({ db, client }) },
         '@/lib/payments/transactions': { runPaymentTransaction },
+        '@/lib/academic-work-correction': correction,
         '@vercel/blob': { del: async (url: string) => {
             assert.equal(inTransaction, false, 'Blob must only be deleted after commit');
             blobCalls += 1;
@@ -203,7 +230,8 @@ function deletionHarness(options: {
         body: raw ? String(body) : JSON.stringify(body),
     }));
     const correct = () => {
-        const file = { _id: new ObjectId(), userId: ownerId, url: 'https://blob.test/correction' };
+        const file = { _id: new ObjectId(), userId: ownerId, url: 'https://blob.test/correction',
+            purpose: 'correction', originalName: 'corrigido.pdf', size: 100, contentType: 'application/pdf', uploadDate: now };
         files.push(file);
         return loadRoute('../../api/put/academicWork/route.ts').PUT(new Request('https://example.test/api/put/academicWork', {
             method: 'PUT', body: JSON.stringify({ academicWork: { _id: workId, userId: ownerId, topicos: {} },
