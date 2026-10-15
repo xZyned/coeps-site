@@ -16,10 +16,17 @@ export const GET = withApiAuthRequired(async function GET(request, { params }) {
       return new Response(JSON.stringify({ message: "Não foi possível encontrar o arquivo. Recarregue a página e tente novamente. Caso o erro persista, entre em contato com a equipe CIEPS." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
+    // Só serve certificados do próprio usuário; responde 404 para não revelar a existência dos demais
+    const userId = user.sub.replace("auth0|", "");
+    if (!ObjectId.isValid(userId)) {
+      return new Response(JSON.stringify({ message: "Não foi possível encontrar seu certificado." }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    }
+
     const { db } = await connectToDatabase();
 
     const data = await db.collection('certificadosAtividades').find({
-      _id: new ObjectId(idComponente)
+      _id: new ObjectId(idComponente),
+      userId: new ObjectId(userId)
     }).toArray()
 
     if (data.length != 1) {
@@ -30,7 +37,7 @@ export const GET = withApiAuthRequired(async function GET(request, { params }) {
 
     const bucket = new GridFSBucket(db, { bucketName: 'certificadosAtividades' });
 
-    // Verifique se o arquivo pertence ao usuário
+    // O documento acima já foi filtrado pelo usuário da sessão
     const file = await db.collection('certificadosAtividades.files').findOne({ _id: new ObjectId(fileId) });
 
     if (!file) {
