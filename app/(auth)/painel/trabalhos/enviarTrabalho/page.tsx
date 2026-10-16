@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 
 //
 
-import { normalizedWorkFileFormats, validateWorkFile, workSubmissionIsOpen } from '@/lib/academic-work-files';
+import { MAX_WORK_UPLOAD_PART_BYTES, normalizedWorkFileFormats, validateWorkFile, workSubmissionIsOpen, workUploadLimits } from '@/lib/academic-work-files';
 // --- Função Auxiliar para Retry com Tipagem Correta ---
 import { Clock, FileText, CheckCircle, AlertCircle, Loader, Info, UserPlus, Trash2, BookOpen, Target, Microscope, MessageSquare, Award, Hash, BookMarked, Save, ArrowLeft, X, Plus, Link, Loader2 } from 'lucide-react';
 import { IAcademicWorksProps } from '@/lib/types/academicWorks/academicWorks.t';
@@ -233,7 +233,7 @@ function SubmissionForm() {
   };
 
   const uploadChunkedFile = async (file: File, fileId: string, chunkSize: number): Promise<string | null> => {
-    if (!Number.isInteger(chunkSize) || chunkSize <= 0 || chunkSize > 10 * 1024 * 1024) {
+    if (!Number.isInteger(chunkSize) || chunkSize <= 0 || chunkSize > MAX_WORK_UPLOAD_PART_BYTES) {
       updateFileProgress(fileId, 0, 'error', 'Configuração de partes inválida. Atualize a página.');
       return null;
     }
@@ -330,8 +330,9 @@ function SubmissionForm() {
     next[slotIndex] = newSlotFile;
     setSlots(next);
 
-    const uploadedFileId = file.size > modalidade.chunk_limite
-      ? await uploadChunkedFile(file, fileId, modalidade.chunk_tamanho)
+    const { chunkThreshold, chunkSize } = workUploadLimits(modalidade);
+    const uploadedFileId = file.size > chunkThreshold
+      ? await uploadChunkedFile(file, fileId, chunkSize)
       : await uploadSingleFile(file, fileId);
 
     if (!uploadedFileId) {
@@ -561,7 +562,7 @@ function SubmissionForm() {
       />
     )
   }
-  if (!workSubmissionIsOpen(trabalhosProps)) {
+  if (!workSubmissionIsOpen(trabalhosProps) && !trabalhosProps.submissionExceptionExpiresAt) {
     return (
       <div className='periodo-fechado'>
         <h1>O período de submissão já foi encerrado.</h1>
@@ -572,9 +573,16 @@ function SubmissionForm() {
   //
 
 
+  const exceptionNotice = trabalhosProps.submissionExceptionExpiresAt ? (
+    <StatusBanner tone="warning" title="Liberação excepcional" className="mb-6">
+      Você pode enviar um trabalho até {new Date(trabalhosProps.submissionExceptionExpiresAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (horário de Brasília).
+    </StatusBanner>
+  ) : null;
+
   if (currentStep === 'topicos') {
     return (
       <div className="formulario-principal">
+        {exceptionNotice}
         <div className="flex items-center justify-between mb-6">
           <button onClick={voltarParaDados} className="btn-voltar">
             <ArrowLeft className="mr-2" size={16} />
@@ -679,6 +687,7 @@ function SubmissionForm() {
       )}
 
       <form onSubmit={handleDadosSubmit} className="formulario-principal">
+        {exceptionNotice}
         <div className="form-header">
           <h1 className="form-title">Submissão de Trabalho</h1>
           <p className="form-subtitle">Preencha os dados abaixo e anexe os arquivos do seu trabalho.</p>
