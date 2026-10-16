@@ -3,7 +3,7 @@ import { connectToDatabase } from '../../../lib/mongodb';
 import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { normalizePaymentCustomerInput } from '@/lib/payments/customer-sync';
 import { syncPendingAsaasCustomer } from '@/lib/payments/customer-profile-sync';
-import { LGPD_CONSENT_VERSION } from '@/lib/registration-consent';
+import { buildConsentUpdate, LGPD_CONSENT_VERSION } from '@/lib/registration-consent';
 
 function requiredString(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
@@ -27,9 +27,15 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
         }
 
         const data = await request.json();
-        if (data.lgpdAccepted !== true || data.lgpdVersion !== LGPD_CONSENT_VERSION) {
+        if (data.lgpdVersion !== LGPD_CONSENT_VERSION) {
             return Response.json(
-                { error: 'lgpd_consent_required', message: 'Aceite os termos de privacidade para concluir.' },
+                { error: 'lgpd_consent_outdated', message: 'A Política de Privacidade e os Termos de Uso foram atualizados. Recarregue a página para ler a versão atual e concluir o cadastro.' },
+                { status: 409 },
+            );
+        }
+        if (data.lgpdAccepted !== true || data.termsAccepted !== true) {
+            return Response.json(
+                { error: 'lgpd_consent_required', message: 'Aceite a Política de Privacidade e os Termos de Uso para concluir.' },
                 { status: 400 },
             );
         }
@@ -94,11 +100,7 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
         }
 
         const now = new Date();
-        const previousConsent = userDb.consentimentos?.lgpd;
-        const acceptedAt = previousConsent?.aceito === true &&
-            previousConsent?.versao === LGPD_CONSENT_VERSION
-            ? previousConsent.aceitoEm
-            : now;
+        const consentUpdate = buildConsentUpdate(userDb.consentimentos, now);
         const email = String(user?.email || userDb.informacoes_usuario?.email || '').trim();
         const userInformation = {
             cpf: payer.value.cpfCnpj,
@@ -130,11 +132,7 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
                 $set: {
                     isPos_registration: true,
                     informacoes_usuario: userInformation,
-                    'consentimentos.lgpd': {
-                        aceito: true,
-                        aceitoEm: acceptedAt,
-                        versao: LGPD_CONSENT_VERSION,
-                    },
+                    ...consentUpdate.$set,
                     'integracoes.asaas.customerSync': {
                         status: hasCustomerId ? 'PENDING' : 'REVIEW_REQUIRED',
                         attempts: 0,
@@ -142,6 +140,7 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
                         ...(!hasCustomerId ? { lastError: 'CUSTOMER_ID_MISSING' } : {}),
                     },
                 },
+                ...(consentUpdate.$push ? { $push: consentUpdate.$push } : {}),
             },
         );
 

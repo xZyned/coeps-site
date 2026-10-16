@@ -33,7 +33,19 @@ export interface IUser {
             "aceito": boolean,
             "aceitoEm": string | Date,
             "versao": string
-        }
+        },
+        "termosUso"?: {
+            "aceito": boolean,
+            "aceitoEm": string | Date,
+            "versao": string
+        },
+        // Aceites de versões anteriores, preservados quando uma nova versão é aceita
+        "historico"?: {
+            "tipo": "lgpd" | "termosUso",
+            "aceito": boolean,
+            "aceitoEm": string | Date,
+            "versao": string
+        }[]
     },
     "integracoes"?: {
         "asaas"?: {
