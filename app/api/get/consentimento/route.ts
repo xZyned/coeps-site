@@ -6,15 +6,16 @@ import { isRegistrationProfileComplete } from '@/lib/registration-gate';
 
 export const dynamic = 'force-dynamic';
 
-// Informa se o usuário precisa (re)aceitar a Política de Privacidade e os
-// Termos de Uso. Só é exigido de quem já tem cadastro completo: quem ainda
-// não concluiu o cadastro aceita no próprio formulário de dados iniciais.
+// Informa se o usuário já aceitou a versão atual da Política de Privacidade e
+// dos Termos de Uso (accepted) e se o painel deve pedir o reaceite (required).
+// O reaceite só é exigido de quem já tem cadastro completo: os demais aceitam
+// antes de pagar ou no formulário de dados iniciais.
 export const GET = withApiAuthRequired(async function GET(request: Request) {
     try {
         const { user } = await getSession(request);
         const userId = String(user?.sub || '').replace(/^auth0\|/, '');
         if (!ObjectId.isValid(userId)) {
-            return Response.json({ required: false, version: LGPD_CONSENT_VERSION });
+            return Response.json({ accepted: false, required: false, version: LGPD_CONSENT_VERSION });
         }
 
         const { db } = await connectToDatabase();
@@ -23,8 +24,9 @@ export const GET = withApiAuthRequired(async function GET(request: Request) {
             { projection: { isPos_registration: 1, informacoes_usuario: 1, consentimentos: 1 } },
         );
 
-        const required = isRegistrationProfileComplete(userDb) && !hasCurrentConsent(userDb?.consentimentos);
-        return Response.json({ required, version: LGPD_CONSENT_VERSION });
+        const accepted = hasCurrentConsent(userDb?.consentimentos);
+        const required = isRegistrationProfileComplete(userDb) && !accepted;
+        return Response.json({ accepted, required, version: LGPD_CONSENT_VERSION });
     } catch {
         return Response.json(
             { error: 'internal_server_error', message: 'Não foi possível verificar seus consentimentos.' },

@@ -1,53 +1,35 @@
 'use client';
 
-// Textos da Política de Privacidade (LGPD) e dos Termos de Uso, exibidos no
-// cadastro e no pedido de reaceite. Ao alterar qualquer texto, troque
+// Textos da Política de Privacidade (LGPD) e dos Termos de Uso, exibidos antes
+// do pagamento, no cadastro e no pedido de reaceite. Ao alterar qualquer texto, troque
 // LGPD_CONSENT_VERSION em app/lib/registration-consent.ts.
 
 const sectionTitle = 'font-bold text-base text-[var(--cieps-ink)]';
 const sectionBody = 'mt-1 text-[var(--cieps-muted)]';
 
+// Texto oficial de LGPD do I CIEPS, o mesmo exibido no pagamento antes desta mudança.
 function PrivacyPolicyText() {
     return (
         <>
             <h2 className="cieps-display text-lg font-semibold text-[var(--cieps-ink)]">Política de Privacidade (LGPD)</h2>
             <p>
-                Em conformidade com a <strong>Lei Geral de Proteção de Dados Pessoais (LGPD - Lei nº 13.709/2018)</strong>, solicitamos o seu consentimento para a coleta e tratamento dos seus dados pessoais.
+                Ao realizar minha inscrição no <strong>CIEPS — Congresso Internacional de Estudantes e Profissionais da Saúde</strong>, declaro estar ciente e de acordo com o tratamento dos dados pessoais fornecidos neste formulário, conforme a Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018).
             </p>
-
+            <p>
+                Autorizo a organização do evento a coletar, armazenar, utilizar e, quando necessário, compartilhar meus dados exclusivamente para organização, comunicação, controle de participação e divulgação institucional do CIEPS.
+            </p>
+            <p>
+                Os dados não serão utilizados para fins comerciais nem repassados a terceiros não envolvidos com o evento, respeitando os princípios de finalidade, necessidade e segurança previstos na LGPD.
+            </p>
             <div>
-                <h3 className={sectionTitle}>1. Finalidade do Tratamento</h3>
-                <div className={`${sectionBody} space-y-2`}>
-                    <p>Os dados fornecidos neste formulário (incluindo Nome, CPF, contato, endereço e dados acadêmicos) serão utilizados exclusivamente para:</p>
-                    <ul className="list-disc pl-5 space-y-1">
-                        <li>Viabilizar sua inscrição e participação no evento;</li>
-                        <li>Emissão de credenciais, certificados e documentos fiscais legais;</li>
-                        <li>Envio de comunicações importantes referentes ao evento, logística e pagamentos;</li>
-                        <li>Geração de dados estatísticos anonimizados para a organização.</li>
-                    </ul>
-                </div>
+                <h3 className={sectionTitle}>Tenho ciência de que:</h3>
+                <ul className={`${sectionBody} list-disc pl-5 space-y-1`}>
+                    <li>poderei solicitar acesso, correção ou exclusão dos meus dados;</li>
+                    <li>poderei revogar este consentimento pelo e-mail oficial da organização;</li>
+                    <li>comunicações sobre futuras edições dependerão do interesse manifestado.</li>
+                </ul>
             </div>
-
-            <div>
-                <h3 className={sectionTitle}>2. Compartilhamento de Dados</h3>
-                <p className={sectionBody}>
-                    Garantimos que suas informações não serão comercializadas ou cedidas a terceiros sem relação direta com o evento. O compartilhamento ocorrerá estritamente com plataformas parceiras operacionais (como gateways de pagamento e sistemas de credenciamento) que também cumprem com as normas de segurança da LGPD.
-                </p>
-            </div>
-
-            <div>
-                <h3 className={sectionTitle}>3. Segurança da Informação</h3>
-                <p className={sectionBody}>
-                    Seus dados serão armazenados em ambiente seguro, protegido contra acessos não autorizados, perdas ou alterações, pelo tempo necessário para o cumprimento das finalidades descritas ou obrigações legais (como guarda de notas fiscais).
-                </p>
-            </div>
-
-            <div>
-                <h3 className={sectionTitle}>4. Direitos do Titular</h3>
-                <p className={sectionBody}>
-                    Você tem o direito de solicitar, a qualquer momento, o acesso, a correção, a anonimização ou a exclusão dos seus dados de nossa base, ressalvadas as obrigações legais de retenção.
-                </p>
-            </div>
+            <p className="font-bold">Declaro que li, compreendi e concordo com os termos acima.</p>
         </>
     );
 }

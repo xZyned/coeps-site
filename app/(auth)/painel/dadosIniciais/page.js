@@ -8,6 +8,7 @@ import { Button, Modal, StatusBanner } from "@/app/components/cieps";
 import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 import { LGPD_CONSENT_VERSION } from '@/lib/registration-consent';
 import ConsentTerms from "@/app/components/ConsentTerms";
+import { fetchConsentStatus } from '@/lib/client/consent';
 
 const PAISES = [
     "Afeganistão", "África do Sul", "Albânia", "Alemanha", "Andorra", "Angola", "Antígua e Barbuda", "Arábia Saudita", "Argélia", "Argentina", "Armênia", "Austrália", "Áustria", "Azerbaijão", "Bahamas", "Bangladesh", "Barbados", "Bahrein", "Bélgica", "Belize", "Benim", "Bielorrússia", "Bolívia", "Bósnia e Herzegovina", "Botsuana", "Brasil", "Brunei", "Bulgária", "Burquina Faso", "Burundi", "Butão", "Cabo Verde", "Camarões", "Camboja", "Canadá", "Catar", "Cazaquistão", "Chade", "Chile", "China", "Chipre", "Colômbia", "Comores", "Congo-Brazzaville", "Coreia do Norte", "Coreia do Sul", "Costa do Marfim", "Costa Rica", "Croácia", "Cuba", "Dinamarca", "Djibuti", "Dominica", "Egito", "El Salvador", "Emirados Árabes Unidos", "Equador", "Eritreia", "Eslováquia", "Eslovênia", "Espanha", "Essuatíni", "Estados Unidos", "Estônia", "Etiópia", "Fiji", "Filipinas", "Finlândia", "França", "Gabão", "Gâmbia", "Gana", "Geórgia", "Granada", "Grécia", "Guatemala", "Guiana", "Guiné", "Guiné Equatorial", "Guiné-Bissau", "Haiti", "Honduras", "Hungria", "Iêmen", "Ilhas Marshall", "Índia", "Indonésia", "Irã", "Iraque", "Irlanda", "Islândia", "Israel", "Itália", "Jamaica", "Japão", "Jordânia", "Kiribati", "Kuwait", "Laos", "Lesoto", "Letônia", "Líbano", "Libéria", "Líbia", "Liechtenstein", "Lituânia", "Luxemburgo", "Macedônia do Norte", "Madagascar", "Malásia", "Malaui", "Maldivas", "Mali", "Malta", "Marrocos", "Maurício", "Mauritânia", "México", "Mianmar", "Micronésia", "Moçambique", "Moldávia", "Mônaco", "Mongólia", "Montenegro", "Namíbia", "Nauru", "Nepal", "Nicarágua", "Níger", "Nigéria", "Noruega", "Nova Zelândia", "Omã", "Países Baixos", "Palau", "Panamá", "Papua Nova Guiné", "Paquistão", "Paraguai", "Peru", "Polônia", "Portugal", "Quênia", "Quirguistão", "Reino Unido", "República Centro-Africana", "República Checa", "República Democrática do Congo", "República Dominicana", "Romênia", "Ruanda", "Rússia", "Samoa", "San Marino", "Santa Lúcia", "São Cristóvão e Neves", "São Tomé e Príncipe", "São Vicente e Granadinas", "Seicheles", "Senegal", "Serra Leoa", "Sérvia", "Singapura", "Síria", "Somália", "Sri Lanka", "Sudão", "Sudão do Sul", "Suécia", "Suíça", "Suriname", "Tailândia", "Tajiquistão", "Tanzânia", "Timor-Leste", "Togo", "Tonga", "Trinidad e Tobago", "Tunísia", "Turcomenistão", "Turquia", "Tuvalu", "Ucrânia", "Uganda", "Uruguai", "Uzbequistão", "Vanuatu", "Vaticano", "Venezuela", "Vietnã", "Zâmbia", "Zimbábue"
@@ -111,6 +112,54 @@ export default function UpdateData() {
         return <TelaLoading />
     }
 
+    // withConsent: o usuário marcou os aceites na janela do cadastro. Sem ele, o
+    // servidor só conclui o cadastro se o aceite da versão atual já estiver
+    // registrado (feito antes do pagamento).
+    const submitRegistration = async (withConsent) => {
+        setIsLoadingForms(true)
+        try {
+            // Payload rigorosamente tipado para evitar crashes no Banco
+            const response = await fetchWithTimeout('/api/post/updateData', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "nome": value_name.trim(),
+                    "cpf": value_cpf.trim(),
+                    "numero_telefone": value_telefone.trim(),
+                    "address": value_address,
+                    "addressNumber": value_addressNumber.trim(),
+                    "complement": value_complement.substring(0, 255),
+                    "province": value_province,
+                    "postalCode": value_postalCode,
+                    "cidade": value_cidade_nome.trim(),
+                    "pais": value_pais,
+                    "cidade_nome": value_cidade_nome,
+                    "data_nascimento": value_data_nascimento,
+                    "onde_conheceu": value_onde_conheceu,
+                    "situacao_academica": value_situacao,
+                    "curso": value_curso,
+                    "ano_conclusao": value_ano,
+                    "semestre_conclusao": value_semestre,
+                    ...(withConsent ? {
+                        "lgpdAccepted": true,
+                        "termsAccepted": true,
+                        "lgpdVersion": LGPD_CONSENT_VERSION
+                    } : {})
+                })
+            })
+            // Lança ApiResponseError com a mensagem do servidor quando a resposta não é ok
+            await readJsonResponse(response)
+            router.push('/painel/suaInscricaoFoiConfirmada')
+            router.refresh()
+        } catch (error) {
+            setOpenLgdp(false)
+            setIsLoadingForms(false)
+            handleChangeAvisoErro(error instanceof Error ? error.message : "Não foi possível salvar seus dados. Tente novamente.")
+        }
+    };
+
     const fetchData = async () => {
         if (isLoadingForms) {
             return 0
@@ -196,6 +245,12 @@ export default function UpdateData() {
                     handleChangeAvisoErro(`Selecione o "Semestre"`)
                     return 0
             }
+            // Quem já aceitou a Política e os Termos antes de pagar não vê a janela de novo
+            const consent = await fetchConsentStatus()
+            if (consent?.accepted) {
+                await submitRegistration(false)
+                return
+            }
             setOpenLgdp(true)
         } catch (error) {
             handleChangeAvisoErro(error instanceof Error ? error.message : 'Não foi possível salvar seus dados. Tente novamente.')
@@ -211,48 +266,7 @@ export default function UpdateData() {
                 <LgpdModal
                     open={openLgpd}
                     onClose={() => { setOpenLgdp(false) }}
-                    onConfirm={async () => {
-                        setIsLoadingForms(true)
-                        // Payload rigorosamente tipado para evitar crashes no Banco
-                        const response = await fetchWithTimeout('/api/post/updateData', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                "nome": value_name.trim(),
-                                "cpf": value_cpf.trim(),
-                                "numero_telefone": value_telefone.trim(),
-                                "address": value_address,
-                                "addressNumber": value_addressNumber.trim(),
-                                "complement": value_complement.substring(0, 255),
-                                "province": value_province,
-                                "postalCode": value_postalCode,
-                                "cidade": value_cidade_nome.trim(),
-                                "pais": value_pais,
-                                "cidade_nome": value_cidade_nome,
-                                "data_nascimento": value_data_nascimento,
-                                "onde_conheceu": value_onde_conheceu,
-                                "situacao_academica": value_situacao,
-                                "curso": value_curso,
-                                "ano_conclusao": value_ano,
-                                "semestre_conclusao": value_semestre,
-                                "lgpdAccepted": true,
-                                "termsAccepted": true,
-                                "lgpdVersion": LGPD_CONSENT_VERSION
-                            })
-                        })
-
-                        if (!response.ok) {
-                            setIsLoadingForms(false)
-                            const responseJson = await readJsonResponse(response)
-                            handleChangeAvisoErro(responseJson?.message || "Não foi possível salvar seus dados. Tente novamente.")
-                            handleChangeSetIsLoadingForms(0)
-                            throw new Error('Erro ao carregar os dados');
-                        }
-                        router.push('/painel/suaInscricaoFoiConfirmada')
-                        router.refresh()
-                    }} // ………………
+                    onConfirm={() => submitRegistration(true)}
                     isLoading={Boolean(isLoadingForms)}
                 />}
             <AvisoModal texto={avisoErro} handler={handleChangeAvisoErro} />

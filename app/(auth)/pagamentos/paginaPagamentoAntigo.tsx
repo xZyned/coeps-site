@@ -328,6 +328,22 @@ export default function PagamentosManual({
     setFormError(null);
   };
 
+  // A Política de Privacidade e os Termos de Uso são aceitos antes de criar a cobrança
+  const confirmCreatePayment = () => {
+    if (!selectedMethod || requestInFlight.current) return;
+    const payerError = validateCustomerInfo();
+    setFormError(payerError);
+    if (payerError) return;
+    setTerms((current) => ({
+      ...current,
+      isOpen: true,
+      onConfirm: () => {
+        setTerms((latest) => ({ ...latest, isOpen: false }));
+        void createPayment();
+      },
+    }));
+  };
+
   const createPayment = async () => {
     if (!selectedMethod || requestInFlight.current) return;
     const payerError = validateCustomerInfo();
@@ -680,7 +696,7 @@ export default function PagamentosManual({
       </div>
 
       <Modal
-        open={selectedMethod !== null}
+        open={selectedMethod !== null && !terms.isOpen}
         onClose={() => {
           if (creatingPayment) return;
           setSelectedMethod(null);
@@ -691,7 +707,7 @@ export default function PagamentosManual({
         footer={(
           <>
             <Button variant="ghost" onClick={() => setSelectedMethod(null)} disabled={creatingPayment}>Cancelar</Button>
-            <Button onClick={createPayment} loading={creatingPayment}>Criar cobrança</Button>
+            <Button onClick={confirmCreatePayment} loading={creatingPayment}>Criar cobrança</Button>
           </>
         )}
       >

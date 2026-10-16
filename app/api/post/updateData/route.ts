@@ -3,7 +3,7 @@ import { connectToDatabase } from '../../../lib/mongodb';
 import { getSession, withApiAuthRequired } from '@/lib/auth0-compat';
 import { normalizePaymentCustomerInput } from '@/lib/payments/customer-sync';
 import { syncPendingAsaasCustomer } from '@/lib/payments/customer-profile-sync';
-import { buildConsentUpdate, LGPD_CONSENT_VERSION } from '@/lib/registration-consent';
+import { buildConsentUpdate, hasCurrentConsent, LGPD_CONSENT_VERSION } from '@/lib/registration-consent';
 
 function requiredString(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
@@ -27,19 +27,6 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
         }
 
         const data = await request.json();
-        if (data.lgpdVersion !== LGPD_CONSENT_VERSION) {
-            return Response.json(
-                { error: 'lgpd_consent_outdated', message: 'A Política de Privacidade e os Termos de Uso foram atualizados. Recarregue a página para ler a versão atual e concluir o cadastro.' },
-                { status: 409 },
-            );
-        }
-        if (data.lgpdAccepted !== true || data.termsAccepted !== true) {
-            return Response.json(
-                { error: 'lgpd_consent_required', message: 'Aceite a Política de Privacidade e os Termos de Uso para concluir.' },
-                { status: 400 },
-            );
-        }
-
         const owner = new ObjectId(userId);
         const { db } = await connectToDatabase();
         const userDb = await db.collection('usuarios').findOne({ _id: owner });
@@ -51,6 +38,22 @@ export const POST = withApiAuthRequired(async function POST(request: Request) {
                 },
                 { status: 403 },
             );
+        }
+
+        // Quem já aceitou a versão atual antes de pagar não precisa aceitar de novo aqui
+        if (!hasCurrentConsent(userDb.consentimentos)) {
+            if (data.lgpdVersion !== LGPD_CONSENT_VERSION) {
+                return Response.json(
+                    { error: 'lgpd_consent_outdated', message: 'A Política de Privacidade e os Termos de Uso foram atualizados. Recarregue a página para ler a versão atual e concluir o cadastro.' },
+                    { status: 409 },
+                );
+            }
+            if (data.lgpdAccepted !== true || data.termsAccepted !== true) {
+                return Response.json(
+                    { error: 'lgpd_consent_required', message: 'Aceite a Política de Privacidade e os Termos de Uso para concluir.' },
+                    { status: 400 },
+                );
+            }
         }
 
         const payer = normalizePaymentCustomerInput({

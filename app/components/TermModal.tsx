@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Button, Modal } from '@/components/cieps';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Modal, StatusBanner } from '@/components/cieps';
+import ConsentTerms from '@/app/components/ConsentTerms';
+import { ApiResponseError } from '@/lib/client/fetchWithTimeout';
+import { acceptCurrentConsent, fetchConsentStatus } from '@/lib/client/consent';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -9,42 +12,73 @@ export interface ModalProps {
   onConfirm: () => void;
 }
 
+// Exibido antes de concluir qualquer pagamento. Registra o aceite da Política de
+// Privacidade e dos Termos de Uso e só então chama onConfirm. Quem já aceitou a
+// versão atual segue direto, sem ver a janela de novo.
 function TermModalContent({ onClose, onConfirm }: Omit<ModalProps, 'isOpen'>) {
-  const [isChecked, setIsChecked] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [lgpdAccepted, setLgpdAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const onConfirmRef = useRef(onConfirm);
+
+  useEffect(() => {
+    onConfirmRef.current = onConfirm;
+  }, [onConfirm]);
+
+  useEffect(() => {
+    let active = true;
+    void fetchConsentStatus().then((status) => {
+      if (!active) return;
+      if (status?.accepted) {
+        onConfirmRef.current();
+        return;
+      }
+      setVisible(true);
+    });
+    return () => { active = false; };
+  }, []);
+
+  if (!visible) return null;
+
+  const confirm = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await acceptCurrentConsent();
+      onConfirm();
+    } catch (err) {
+      setError(err instanceof ApiResponseError
+        ? err.message
+        : 'Não foi possível registrar seu aceite. Verifique sua conexão e tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Modal
       open
       onClose={onClose}
-      title="Termo de consentimento"
-      description="Tratamento de dados pessoais para participação no I CIEPS"
+      title="Política de Privacidade e Termos de Uso"
+      description="Leia e aceite antes de concluir o pagamento da sua inscrição no I CIEPS."
       className="max-w-3xl"
-      footer={<Button onClick={onConfirm} disabled={!isChecked}>Confirmar e prosseguir</Button>}
+      footer={(
+        <Button onClick={confirm} disabled={!lgpdAccepted || !termsAccepted || saving} loading={saving}>
+          Confirmar e prosseguir
+        </Button>
+      )}
     >
-      <div className="max-h-[48vh] space-y-4 overflow-y-auto pr-2 text-sm leading-7">
-        <p>
-          Ao realizar minha inscrição no <strong className="text-tinta">CIEPS — Congresso Internacional de Estudantes e Profissionais da Saúde</strong>, declaro estar ciente e de acordo com o tratamento dos dados pessoais fornecidos neste formulário, conforme a Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018).
-        </p>
-        <p>
-          Autorizo a organização do evento a coletar, armazenar, utilizar e, quando necessário, compartilhar meus dados exclusivamente para organização, comunicação, controle de participação e divulgação institucional do CIEPS.
-        </p>
-        <p>
-          Os dados não serão utilizados para fins comerciais nem repassados a terceiros não envolvidos com o evento, respeitando os princípios de finalidade, necessidade e segurança previstos na LGPD.
-        </p>
-        <div>
-          <h3 className="font-bold text-tinta">Tenho ciência de que:</h3>
-          <ul className="mt-2 list-disc space-y-2 pl-5">
-            <li>poderei solicitar acesso, correção ou exclusão dos meus dados;</li>
-            <li>poderei revogar este consentimento pelo e-mail oficial da organização;</li>
-            <li>comunicações sobre futuras edições dependerão do interesse manifestado.</li>
-          </ul>
-        </div>
-        <p className="font-bold text-tinta">Declaro que li, compreendi e concordo com os termos acima.</p>
+      <div className="space-y-4">
+        {error && <StatusBanner tone="error" title="Aceite não registrado">{error}</StatusBanner>}
+        <ConsentTerms
+          lgpdAccepted={lgpdAccepted}
+          termsAccepted={termsAccepted}
+          onLgpdChange={setLgpdAccepted}
+          onTermsChange={setTermsAccepted}
+        />
       </div>
-      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-md border border-linha bg-papel p-4 text-sm font-semibold text-tinta">
-        <input type="checkbox" checked={isChecked} onChange={(event) => setIsChecked(event.target.checked)} className="mt-0.5 h-5 w-5 accent-goles" />
-        <span>Li e aceito os termos acima.</span>
-      </label>
     </Modal>
   );
 }

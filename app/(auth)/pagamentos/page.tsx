@@ -1747,17 +1747,25 @@ const PaymentForm = ({
         if (!isPersonalInfoValid()) return;
 
         if (paymentMethod === "PIX") {
-            setLoading(true);
-            setMessageModalWarning2("");
-            try {
-                await onCreatePix(personalInfo);
-            } catch (error) {
-                setMessageModalWarning2(
-                    error instanceof Error ? error.message : 'Não foi possível criar a cobrança PIX.',
-                );
-            } finally {
-                setLoading(false);
-            }
+            // A Política de Privacidade e os Termos de Uso são aceitos antes de gerar a cobrança
+            setDataModalProps((prev) => ({
+                ...prev,
+                isOpen: true,
+                onConfirm: async () => {
+                    setDataModalProps((current) => ({ ...current, isOpen: false }));
+                    setLoading(true);
+                    setMessageModalWarning2("");
+                    try {
+                        await onCreatePix(personalInfo);
+                    } catch (error) {
+                        setMessageModalWarning2(
+                            error instanceof Error ? error.message : 'Não foi possível criar a cobrança PIX.',
+                        );
+                    } finally {
+                        setLoading(false);
+                    }
+                },
+            }));
             return;
         }
 

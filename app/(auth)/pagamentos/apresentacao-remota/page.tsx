@@ -6,6 +6,7 @@ import { CheckCircle2, CreditCard, FileUp, Laptop, Loader2, MapPin, QrCode } fro
 import { AsyncStatePanel, Button, PageShell, StatusBanner } from '@/components/cieps';
 import { fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
 import { REMOTE_WORK_MAX_PROOF_BYTES } from '@/lib/remote-work-access';
+import TermModal from '@/components/TermModal';
 import type PaymentTicketProps from '@/lib/types/payments/paymentTicket.t';
 import type { PublicRemoteWorkAccess } from '@/lib/types/remote-work-access';
 
@@ -42,6 +43,7 @@ export default function RemoteWorkPaymentPage() {
     const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
     const [uf, setUf] = useState('');
     const [municipalityCode, setMunicipalityCode] = useState('');
+    const [termsOpen, setTermsOpen] = useState(false);
     const [proof, setProof] = useState<File | null>(null);
     const [consentAccepted, setConsentAccepted] = useState(false);
     const [payer, setPayer] = useState<Payer>({ name: '', email: '', cpfCnpj: '', postalCode: '', addressNumber: '', street: '', neighborhood: '', complement: '', phone: '' });
@@ -255,10 +257,19 @@ export default function RemoteWorkPaymentPage() {
                         <h2 className="text-xl font-bold text-[var(--cieps-ink)]">Forma de pagamento</h2>
                         <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setMethod('PIX')} className={`rounded-md border p-4 text-left ${method === 'PIX' ? 'border-[var(--cieps-red)] bg-red-50' : 'border-[var(--cieps-line)]'}`}><QrCode className="h-5 w-5" /><strong className="mt-2 block">PIX · {formatCurrency(6000)}</strong></button><button type="button" onClick={() => setMethod('CREDIT_CARD')} className={`rounded-md border p-4 text-left ${method === 'CREDIT_CARD' ? 'border-[var(--cieps-red)] bg-red-50' : 'border-[var(--cieps-line)]'}`}><CreditCard className="h-5 w-5" /><strong className="mt-2 block">Cartão · 1x de {formatCurrency(6000)}</strong></button></div>
                         {method === 'CREDIT_CARD' && <div className="mt-5 grid gap-3 sm:grid-cols-2"><input className={`${inputClass} sm:col-span-2`} autoComplete="cc-name" placeholder="Nome impresso no cartão" value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} /><input className={`${inputClass} sm:col-span-2`} autoComplete="cc-number" inputMode="numeric" placeholder="Número do cartão" value={card.number} onChange={(e) => setCard({ ...card, number: e.target.value })} /><input className={inputClass} autoComplete="cc-exp" placeholder="MM/AA" value={card.expiry} onChange={(e) => setCard({ ...card, expiry: e.target.value })} /><input className={inputClass} autoComplete="cc-csc" inputMode="numeric" placeholder="CVV" value={card.cvc} onChange={(e) => setCard({ ...card, cvc: e.target.value })} /></div>}
-                        <Button className="mt-5 w-full" onClick={pay} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : method === 'PIX' ? 'Gerar PIX' : 'Pagar com cartão'}</Button>
+                        <Button className="mt-5 w-full" onClick={() => setTermsOpen(true)} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : method === 'PIX' ? 'Gerar PIX' : 'Pagar com cartão'}</Button>
                     </section>
                 )}
             </div>
+            {/* A Política de Privacidade e os Termos de Uso são aceitos antes de gerar a cobrança */}
+            <TermModal
+                isOpen={termsOpen}
+                onClose={() => setTermsOpen(false)}
+                onConfirm={() => {
+                    setTermsOpen(false);
+                    void pay();
+                }}
+            />
         </PageShell>
     );
 }

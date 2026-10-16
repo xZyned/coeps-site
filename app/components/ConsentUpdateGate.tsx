@@ -3,45 +3,35 @@
 import { useEffect, useState } from 'react';
 import { Button, Modal, StatusBanner, buttonClassName } from '@/app/components/cieps';
 import ConsentTerms from '@/app/components/ConsentTerms';
-import { ApiResponseError, fetchWithTimeout, readJsonResponse } from '@/lib/client/fetchWithTimeout';
-
-type ConsentStatus = { required?: boolean; version?: string };
+import { ApiResponseError } from '@/lib/client/fetchWithTimeout';
+import { acceptCurrentConsent, fetchConsentStatus } from '@/lib/client/consent';
 
 // Pede o (re)aceite da Política de Privacidade e dos Termos de Uso a quem tem
 // cadastro completo mas não aceitou a versão atual. Bloqueia o painel até o
 // aceite; a única outra saída é encerrar a sessão.
 export default function ConsentUpdateGate() {
-    const [version, setVersion] = useState<string | null>(null);
+    const [open, setOpen] = useState(false);
     const [lgpdAccepted, setLgpdAccepted] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const controller = new AbortController();
-        fetch('/api/get/consentimento', { signal: controller.signal, cache: 'no-store' })
-            .then((response) => (response.ok ? response.json() : null))
-            .then((status: ConsentStatus | null) => {
-                if (status?.required && status.version) setVersion(status.version);
-            })
-            .catch(() => undefined);
-        return () => controller.abort();
+        let active = true;
+        void fetchConsentStatus().then((status) => {
+            if (active && status?.required) setOpen(true);
+        });
+        return () => { active = false; };
     }, []);
 
-    if (!version) return null;
+    if (!open) return null;
 
     const accept = async () => {
         setSaving(true);
         setError('');
         try {
-            const response = await fetchWithTimeout('/api/post/aceitarConsentimento', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lgpdAccepted, termsAccepted, version }),
-            });
-            // Lança ApiResponseError com a mensagem do servidor quando a resposta não é ok
-            await readJsonResponse(response);
-            setVersion(null);
+            await acceptCurrentConsent();
+            setOpen(false);
         } catch (err) {
             setError(err instanceof ApiResponseError
                 ? err.message
